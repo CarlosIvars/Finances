@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { StatCard } from '../components/ui/StatCard';
 import { Card } from '../components/ui/Card';
-import { Calendar, ChevronDown } from 'lucide-react';
+import { Calendar, ChevronDown, Sparkles, Loader2 } from 'lucide-react';
+import { generateInsights } from '../services/api';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend
@@ -16,6 +17,23 @@ const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 
 export function Dashboard({ transactions }: DashboardProps) {
     const [selectedPeriod, setSelectedPeriod] = useState('current'); // current, all, or specific month
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [aiMessage, setAiMessage] = useState('');
+
+    const handleGenerateInsights = async () => {
+        setIsGenerating(true);
+        setAiMessage('');
+        try {
+            const result = await generateInsights();
+            setAiMessage(`✅ ${result.alerts_created} insights generados. ¡Revisa la campana!`);
+            // Trigger AlertBell to refresh
+            window.dispatchEvent(new Event('alertsUpdated'));
+        } catch (error) {
+            setAiMessage('❌ Error al generar insights');
+        }
+        setIsGenerating(false);
+        setTimeout(() => setAiMessage(''), 5000);
+    };
 
     // Get available months from transactions
     const availableMonths = useMemo(() => {
@@ -65,7 +83,7 @@ export function Dashboard({ transactions }: DashboardProps) {
 
     return (
         <div className="space-y-8">
-            {/* Header with Month Selector */}
+            {/* Header with Month Selector and AI Button */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h2 className="text-3xl font-bold text-white mb-2">Resumen Financiero</h2>
@@ -75,25 +93,49 @@ export function Dashboard({ transactions }: DashboardProps) {
                     </p>
                 </div>
 
-                <div className="relative">
-                    <select
-                        value={selectedPeriod}
-                        onChange={(e) => setSelectedPeriod(e.target.value)}
-                        className="appearance-none bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 pr-10 text-white cursor-pointer hover:border-slate-600 focus:outline-none focus:border-blue-500"
+                <div className="flex items-center gap-3">
+                    {/* AI Analysis Button */}
+                    <button
+                        onClick={handleGenerateInsights}
+                        disabled={isGenerating}
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 rounded-lg text-white font-medium transition-all shadow-lg hover:shadow-purple-500/25 disabled:opacity-50"
                     >
-                        <option value="current">Este mes</option>
-                        <option value="all">Histórico completo</option>
-                        <optgroup label="Meses anteriores">
-                            {availableMonths.map(m => {
-                                const [year, month] = m.split('-');
-                                const label = new Date(Number(year), Number(month) - 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-                                return <option key={m} value={m}>{label}</option>;
-                            })}
-                        </optgroup>
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                        {isGenerating ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <Sparkles className="w-4 h-4" />
+                        )}
+                        {isGenerating ? 'Analizando...' : 'Análisis IA'}
+                    </button>
+
+                    {/* Period Selector */}
+                    <div className="relative">
+                        <select
+                            value={selectedPeriod}
+                            onChange={(e) => setSelectedPeriod(e.target.value)}
+                            className="appearance-none bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 pr-10 text-white cursor-pointer hover:border-slate-600 focus:outline-none focus:border-blue-500"
+                        >
+                            <option value="current">Este mes</option>
+                            <option value="all">Histórico completo</option>
+                            <optgroup label="Meses anteriores">
+                                {availableMonths.map(m => {
+                                    const [year, month] = m.split('-');
+                                    const label = new Date(Number(year), Number(month) - 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+                                    return <option key={m} value={m}>{label}</option>;
+                                })}
+                            </optgroup>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                    </div>
                 </div>
             </div>
+
+            {/* AI Message Toast */}
+            {aiMessage && (
+                <div className="bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-200 animate-in slide-in-from-top-2 duration-200">
+                    {aiMessage}
+                </div>
+            )}
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

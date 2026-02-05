@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Account, Category, Transaction, ImportBatch, ClassificationRule
+from .models import Account, Category, Transaction, ImportBatch, ClassificationRule, Alert
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -29,3 +29,10 @@ class ClassificationRuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClassificationRule
         fields = '__all__'
+
+class AlertSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Alert
+        fields = ['id', 'type', 'title', 'message', 'icon', 'is_read', 'is_dismissed', 'created_at', 'related_data']
+        read_only_fields = ['user', 'created_at']
+

@@ -6,6 +6,7 @@ import { TransactionsPage } from './pages/TransactionsPage';
 import { ImportPage } from './pages/ImportPage';
 import { LoginPage } from './pages/LoginPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
+import { InsightsPage } from './pages/InsightsPage';
 import { Loader2 } from 'lucide-react';
 
 function App() {
@@ -25,7 +26,7 @@ function App() {
     setCheckingAuth(false);
   }, []);
 
-  const handleLogin = (token: string) => {
+  const handleLogin = (_token: string) => {
     setIsAuthenticated(true);
   };
 
@@ -94,6 +95,8 @@ function App() {
         return <TransactionsPage transactions={transactions} onTransactionUpdated={fetchData} />;
       case 'analytics':
         return <AnalyticsPage transactions={transactions} />;
+      case 'insights':
+        return <InsightsPage />;
       case 'import':
         return <ImportPage />;
       default:

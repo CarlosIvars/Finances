@@ -1,5 +1,5 @@
 
-import { LayoutDashboard, Receipt, PieChart, Import, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Receipt, PieChart, Import, Settings, LogOut, Sparkles } from 'lucide-react';
 
 interface SidebarProps {
     activeTab: string;
@@ -12,6 +12,7 @@ export function Sidebar({ activeTab, onTabChange, onLogout }: SidebarProps) {
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
         { id: 'transactions', label: 'Transacciones', icon: <Receipt size={20} /> },
         { id: 'analytics', label: 'Análisis', icon: <PieChart size={20} /> },
+        { id: 'insights', label: 'Insights IA', icon: <Sparkles size={20} /> },
         { id: 'import', label: 'Importar', icon: <Import size={20} /> },
     ];
 

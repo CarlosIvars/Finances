@@ -22,6 +22,7 @@ media/
 .env
 .env.local
 .env.*.local
+backend/.env
 
 # IDE
 .idea/

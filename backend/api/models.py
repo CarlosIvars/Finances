@@ -67,3 +67,34 @@ class ClassificationRule(models.Model):
     
     def __str__(self):
         return f"If contains '{self.keyword}' -> {self.category.name}"
+
+
+class Alert(models.Model):
+    """Sistema de alertas y notificaciones"""
+    ALERT_TYPES = [
+        ('insight', '💡 Insight IA'),
+        ('reminder', '📅 Recordatorio'),
+        ('anomaly', '⚠️ Anomalía'),
+        ('goal', '🎯 Meta'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='alerts')
+    type = models.CharField(max_length=20, choices=ALERT_TYPES, default='insight')
+    title = models.CharField(max_length=150)
+    message = models.TextField()
+    icon = models.CharField(max_length=10, default='💡')
+    is_read = models.BooleanField(default=False)
+    is_dismissed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    # JSON field for related transactions/filters
+    # Format: {"transaction_ids": [1,2,3], "category_id": 5, "filter_type": "anomaly"}
+    related_data = models.JSONField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.icon} {self.title}"
+
+
