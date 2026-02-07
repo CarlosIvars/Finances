@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     AccountViewSet, CategoryViewSet, TransactionViewSet, 
-    ImportBatchViewSet, ClassificationRuleViewSet, AlertViewSet
+    ImportBatchViewSet, ClassificationRuleViewSet, AlertViewSet, BudgetViewSet
 )
 
 router = DefaultRouter()
@@ -12,7 +12,9 @@ router.register(r'transactions', TransactionViewSet, basename='transaction')
 router.register(r'imports', ImportBatchViewSet, basename='importbatch')
 router.register(r'rules', ClassificationRuleViewSet, basename='classificationrule')
 router.register(r'alerts', AlertViewSet, basename='alert')
+router.register(r'budgets', BudgetViewSet, basename='budget')
 
 urlpatterns = [
     path('', include(router.urls)),
 ]
+

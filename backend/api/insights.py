@@ -165,27 +165,61 @@ def generate_insights_with_ai(user: User) -> List[Dict]:
         for r in summary['recurring'][:5]
     ])
     
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", """Eres un asesor financiero personal experto. Analiza los gastos del usuario y proporciona:
-1. Un resumen breve de sus hábitos de gasto
-2. 2-3 observaciones específicas sobre categorías destacadas
-3. 2-3 recomendaciones concretas para ahorrar
-4. Detecta posibles suscripciones o gastos recurrentes que podrían revisarse
+    # Professional prompts for financial analysis
+    default_system_prompt = """Eres un asesor financiero personal certificado con más de 15 años de experiencia en gestión de finanzas personales.
 
-Sé conciso, usa emojis para hacer el texto más legible, y sé constructivo (no crítico).
-Responde SOLO en español. Máximo 300 palabras."""),
-        ("user", """Gastos de los últimos {days} días:
+## Tu Rol
+Analizas los datos financieros del usuario para proporcionar insights accionables y personalizados.
 
-Total gastado: {total:.2f}€
-Número de transacciones: {count}
+## Formato de Respuesta (OBLIGATORIO)
+Estructura tu respuesta EXACTAMENTE así:
 
-Gastos por categoría:
+### 📊 Resumen Ejecutivo
+[2-3 líneas con el estado general de las finanzas]
+
+### 🔍 Análisis por Categoría
+[Lista las 3 categorías con mayor gasto, indicando si son elevadas]
+
+### ⚠️ Alertas Importantes
+[Si hay gastos inusuales, suscripciones duplicadas, o patrones preocupantes]
+
+### 💡 Recomendaciones Concretas
+[2-3 acciones específicas que el usuario puede tomar HOY]
+
+### 🎯 Meta Sugerida
+[Una meta de ahorro realista para el próximo mes basada en los datos]
+
+## Reglas
+- Responde SOLO en español
+- Usa emojis para mejorar legibilidad
+- Sé constructivo, nunca crítico o condescendiente
+- Basa TODAS tus observaciones en los datos proporcionados
+- Máximo 350 palabras
+- NO inventes datos que no estén en el contexto"""
+
+    default_user_prompt = """## Datos Financieros del Usuario
+
+**Período analizado:** Últimos {days} días
+**Total gastado:** {total:.2f}€
+**Número de transacciones:** {count}
+
+### Desglose por Categoría:
 {categories}
 
-Gastos recurrentes detectados:
+### Gastos Recurrentes Detectados:
 {recurring}
 
-Dame tu análisis y recomendaciones.""")
+---
+Por favor, proporciona tu análisis profesional siguiendo el formato especificado."""
+
+    # Try to get custom prompts from DB, fall back to defaults
+    from .models import LLMPrompt
+    system_prompt = LLMPrompt.get_prompt('insights_system', default_system_prompt)
+    user_prompt = LLMPrompt.get_prompt('insights_user', default_user_prompt)
+    
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("user", user_prompt)
     ])
     
     chain = prompt | llm | StrOutputParser()
@@ -337,3 +371,173 @@ def create_alerts_from_insights(user: User) -> int:
         created += 1
     
     return created
+
+
+def generate_budget_advice(user, month) -> str:
+    """
+    Genera consejos IA sobre cómo reducir gastos basándose en el presupuesto.
+    Usa prompts de la base de datos si están configurados.
+    """
+    from langchain_core.prompts import ChatPromptTemplate
+    from langchain_core.output_parsers import StrOutputParser
+    from .models import Budget, LLMPrompt
+    
+    llm, provider = get_llm_client()
+    
+    if not llm:
+        return generate_budget_advice_heuristic(user, month)
+    
+    # Get budget comparison data
+    next_month = (month.replace(day=28) + timedelta(days=4)).replace(day=1)
+    
+    budgets = Budget.objects.filter(user=user, month=month).select_related('category')
+    
+    spending = Transaction.objects.filter(
+        user=user,
+        type='expense',
+        date__gte=month,
+        date__lt=next_month
+    ).values('category__name').annotate(
+        spent=Sum('amount')
+    )
+    
+    spending_map = {s['category__name']: abs(float(s['spent'])) for s in spending}
+    
+    # Build comparison text
+    comparison_text = []
+    over_budget = []
+    for budget in budgets:
+        spent = spending_map.get(budget.category.name, 0)
+        diff = float(budget.amount) - spent
+        status = "✅ bajo presupuesto" if diff >= 0 else "⚠️ EXCEDIDO"
+        comparison_text.append(
+            f"- {budget.category.name}: Presupuesto {budget.amount}€, Gastado {spent:.2f}€ → {status}"
+        )
+        if diff < 0:
+            over_budget.append({
+                'category': budget.category.name,
+                'budgeted': float(budget.amount),
+                'spent': spent,
+                'excess': abs(diff)
+            })
+    
+    if not comparison_text:
+        return "No tienes presupuestos definidos para este mes. ¡Define uno primero!"
+    
+    # Professional prompts for budget advice
+    default_system = """Eres un coach financiero personal especializado en gestión de presupuestos familiares.
+
+## Tu Misión
+Ayudar al usuario a optimizar sus gastos y cumplir sus metas de ahorro de forma realista y sostenible.
+
+## Formato de Respuesta (OBLIGATORIO)
+
+### 📊 Estado del Presupuesto
+[Resumen en 1-2 líneas: ¿está dentro o fuera del presupuesto? ¿Por cuánto?]
+
+### ⚠️ Categorías Críticas
+[Lista las categorías excedidas ordenadas por gravedad, con el % de exceso]
+
+### 💡 Plan de Acción (3 pasos)
+1. **Acción inmediata:** [Algo que pueda hacer HOY]
+2. **Esta semana:** [Ajuste a implementar en los próximos 7 días]
+3. **Para el próximo mes:** [Estrategia preventiva]
+
+### 🎯 Ahorro Potencial
+[Calcula cuánto podría ahorrar si implementa las recomendaciones]
+
+## Reglas Importantes
+- Responde SOLO en español
+- Sé específico: menciona categorías y cantidades exactas
+- Prioriza consejos prácticos sobre teóricos
+- Nunca juzgues ni critiques los hábitos del usuario
+- Máximo 250 palabras
+- Usa emojis con moderación para mejorar legibilidad"""
+
+    default_user = """## Mi Presupuesto de {month}
+
+### Comparativa por Categoría:
+{comparison}
+
+### Categorías Excedidas:
+{over_budget}
+
+---
+Necesito un plan concreto para reducir mis gastos y cumplir mi presupuesto el próximo mes."""
+
+    system_prompt = LLMPrompt.get_prompt('budget_advice_system', default_system)
+    user_prompt = LLMPrompt.get_prompt('budget_advice_user', default_user)
+    
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("user", user_prompt)
+    ])
+    
+    chain = prompt | llm | StrOutputParser()
+    
+    try:
+        over_budget_text = "\n".join([
+            f"- {ob['category']}: excedido en {ob['excess']:.2f}€"
+            for ob in over_budget
+        ]) or "Ninguna (¡bien hecho!)"
+        
+        response = chain.invoke({
+            'month': month.strftime('%B %Y'),
+            'comparison': "\n".join(comparison_text),
+            'over_budget': over_budget_text
+        })
+        
+        # Clean thinking tokens
+        return clean_llm_response(response)
+    except Exception as e:
+        print(f"Error generating budget advice: {e}")
+        return generate_budget_advice_heuristic(user, month)
+
+
+def generate_budget_advice_heuristic(user, month) -> str:
+    """Genera consejos heurísticos cuando no hay LLM disponible"""
+    from .models import Budget
+    
+    next_month = (month.replace(day=28) + timedelta(days=4)).replace(day=1)
+    
+    budgets = Budget.objects.filter(user=user, month=month).select_related('category')
+    
+    spending = Transaction.objects.filter(
+        user=user,
+        type='expense',
+        date__gte=month,
+        date__lt=next_month
+    ).values('category__name').annotate(
+        spent=Sum('amount')
+    )
+    
+    spending_map = {s['category__name']: abs(float(s['spent'])) for s in spending}
+    
+    over_budget = []
+    for budget in budgets:
+        spent = spending_map.get(budget.category.name, 0)
+        diff = float(budget.amount) - spent
+        if diff < 0:
+            over_budget.append({
+                'category': budget.category.name,
+                'excess': abs(diff),
+                'percentage': (spent / float(budget.amount) * 100) - 100
+            })
+    
+    if not over_budget:
+        return "🎉 ¡Excelente! Estás dentro del presupuesto en todas las categorías. ¡Sigue así!"
+    
+    # Sort by excess amount
+    over_budget.sort(key=lambda x: x['excess'], reverse=True)
+    
+    advice = ["📊 **Análisis de tu presupuesto:**\n"]
+    for ob in over_budget[:3]:
+        advice.append(f"⚠️ **{ob['category']}**: Excedido en {ob['excess']:.2f}€ ({ob['percentage']:.0f}% sobre el presupuesto)")
+    
+    advice.append("\n💡 **Consejos:**")
+    advice.append("1. Revisa los gastos de las categorías excedidas")
+    advice.append("2. Considera ajustar el presupuesto si es muy restrictivo")
+    advice.append("3. Busca alternativas más económicas para tus gastos habituales")
+    
+    return "\n".join(advice)
+

@@ -98,3 +98,52 @@ class Alert(models.Model):
         return f"{self.icon} {self.title}"
 
 
+class Budget(models.Model):
+    """Presupuesto mensual por categoría"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='budgets')
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='budgets')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    month = models.DateField(help_text="Primer día del mes (ej: 2026-02-01)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ['user', 'category', 'month']
+        ordering = ['category__name']
+    
+    def __str__(self):
+        return f"{self.category.name}: {self.amount}€ ({self.month.strftime('%b %Y')})"
+
+
+class LLMPrompt(models.Model):
+    """Prompts editables para el sistema de IA"""
+    PROMPT_TYPES = [
+        ('insights_system', 'Insights - System Prompt'),
+        ('insights_user', 'Insights - User Prompt'),
+        ('budget_advice_system', 'Budget Advice - System Prompt'),
+        ('budget_advice_user', 'Budget Advice - User Prompt'),
+        ('anomaly_detection', 'Anomaly Detection Prompt'),
+    ]
+    
+    name = models.CharField(max_length=50, unique=True, choices=PROMPT_TYPES)
+    content = models.TextField()
+    description = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "LLM Prompt"
+        verbose_name_plural = "LLM Prompts"
+    
+    def __str__(self):
+        return f"{self.get_name_display()}"
+    
+    @classmethod
+    def get_prompt(cls, name: str, default: str = "") -> str:
+        """Obtiene el contenido del prompt o devuelve el default"""
+        try:
+            prompt = cls.objects.get(name=name, is_active=True)
+            return prompt.content
+        except cls.DoesNotExist:
+            return default

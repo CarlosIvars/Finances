@@ -2,10 +2,12 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import Account, Category, Transaction, ImportBatch, ClassificationRule, Alert
+from django.db.models import Sum
+from datetime import date
+from .models import Account, Category, Transaction, ImportBatch, ClassificationRule, Alert, Budget
 from .serializers import (
     AccountSerializer, CategorySerializer, TransactionSerializer, 
-    ImportBatchSerializer, ClassificationRuleSerializer, AlertSerializer
+    ImportBatchSerializer, ClassificationRuleSerializer, AlertSerializer, BudgetSerializer
 )
 
 
@@ -134,3 +136,127 @@ class AlertViewSet(viewsets.ModelViewSet):
             return Response({'status': 'generated', 'alerts_created': count})
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class BudgetViewSet(viewsets.ModelViewSet):
+    """Gestión de presupuestos mensuales por categoría"""
+    serializer_class = BudgetSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        queryset = Budget.objects.filter(user=self.request.user).select_related('category')
+        # Filter by month if provided
+        month = self.request.query_params.get('month')
+        if month:
+            queryset = queryset.filter(month=month)
+        return queryset
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+    
+    @action(detail=False, methods=['post'])
+    def bulk_save(self, request):
+        """Guardar múltiples presupuestos de una vez"""
+        budgets_data = request.data.get('budgets', [])
+        month = request.data.get('month')
+        
+        if not month:
+            return Response({'error': 'month is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        created = 0
+        updated = 0
+        
+        for item in budgets_data:
+            category_id = item.get('category_id')
+            amount = item.get('amount', 0)
+            
+            if category_id and float(amount) > 0:
+                budget, was_created = Budget.objects.update_or_create(
+                    user=request.user,
+                    category_id=category_id,
+                    month=month,
+                    defaults={'amount': amount}
+                )
+                if was_created:
+                    created += 1
+                else:
+                    updated += 1
+        
+        return Response({
+            'status': 'saved',
+            'created': created,
+            'updated': updated
+        })
+    
+    @action(detail=False, methods=['get'])
+    def comparison(self, request):
+        """Comparar presupuesto vs gasto real del mes"""
+        month_str = request.query_params.get('month')
+        if month_str:
+            month = date.fromisoformat(month_str)
+        else:
+            today = date.today()
+            month = today.replace(day=1)
+        
+        # Get budgets for the month
+        budgets = Budget.objects.filter(
+            user=request.user,
+            month=month
+        ).select_related('category')
+        
+        # Get actual spending by category for the month
+        next_month = (month.replace(day=28) + timedelta(days=4)).replace(day=1)
+        
+        spending = Transaction.objects.filter(
+            user=request.user,
+            type='expense',
+            date__gte=month,
+            date__lt=next_month
+        ).values('category', 'category__name', 'category__color').annotate(
+            spent=Sum('amount')
+        )
+        
+        spending_map = {s['category']: abs(float(s['spent'])) for s in spending}
+        
+        comparison = []
+        for budget in budgets:
+            spent = spending_map.get(budget.category_id, 0)
+            comparison.append({
+                'category_id': budget.category_id,
+                'category_name': budget.category.name,
+                'category_color': budget.category.color,
+                'budgeted': float(budget.amount),
+                'spent': spent,
+                'difference': float(budget.amount) - spent,
+                'percentage': (spent / float(budget.amount) * 100) if budget.amount else 0
+            })
+        
+        return Response({
+            'month': month.isoformat(),
+            'comparison': comparison,
+            'total_budgeted': sum(c['budgeted'] for c in comparison),
+            'total_spent': sum(c['spent'] for c in comparison)
+        })
+    
+    @action(detail=False, methods=['post'])
+    def get_advice(self, request):
+        """Obtener consejos IA sobre cómo reducir gastos"""
+        from .insights import generate_budget_advice
+        month_str = request.data.get('month')
+        
+        if month_str:
+            month = date.fromisoformat(month_str)
+        else:
+            today = date.today()
+            month = today.replace(day=1)
+        
+        try:
+            advice = generate_budget_advice(request.user, month)
+            return Response({'advice': advice})
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# Import for timedelta
+from datetime import timedelta
+

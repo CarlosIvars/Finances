@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { StatCard } from '../components/ui/StatCard';
 import { Card } from '../components/ui/Card';
-import { Calendar, ChevronDown, Sparkles, Loader2 } from 'lucide-react';
-import { generateInsights } from '../services/api';
+import { Calendar, ChevronDown, Sparkles, Loader2, Wallet } from 'lucide-react';
+import { generateInsights, getBudgetComparison } from '../services/api';
+import type { BudgetComparison } from '../services/api';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend
@@ -19,6 +20,28 @@ export function Dashboard({ transactions }: DashboardProps) {
     const [selectedPeriod, setSelectedPeriod] = useState('current'); // current, all, or specific month
     const [isGenerating, setIsGenerating] = useState(false);
     const [aiMessage, setAiMessage] = useState('');
+    const [budgetComparison, setBudgetComparison] = useState<BudgetComparison[]>([]);
+    const [loadingBudget, setLoadingBudget] = useState(true);
+
+    // Fetch budget comparison data
+    useEffect(() => {
+        const fetchBudgetData = async () => {
+            setLoadingBudget(true);
+            try {
+                const now = new Date();
+                const month = selectedPeriod === 'current' || selectedPeriod === 'all'
+                    ? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+                    : `${selectedPeriod}-01`;
+                const data = await getBudgetComparison(month);
+                setBudgetComparison(data.comparison);
+            } catch (error) {
+                console.error('Error fetching budget data:', error);
+                setBudgetComparison([]);
+            }
+            setLoadingBudget(false);
+        };
+        fetchBudgetData();
+    }, [selectedPeriod]);
 
     const handleGenerateInsights = async () => {
         setIsGenerating(true);
@@ -73,6 +96,20 @@ export function Dashboard({ transactions }: DashboardProps) {
 
     const monthlyData = processMonthlyData(transactions);
     const categoryData = processCategoryData(filteredTransactions);
+
+    // Format budget data for chart
+    const budgetChartData = budgetComparison.map(b => ({
+        name: b.category_name.length > 12 ? b.category_name.substring(0, 12) + '...' : b.category_name,
+        fullName: b.category_name,
+        presupuesto: b.budgeted,
+        gastado: b.spent,
+        color: b.category_color,
+        difference: b.difference,
+        percentage: b.percentage
+    }));
+
+    const totalBudgeted = budgetComparison.reduce((sum, b) => sum + b.budgeted, 0);
+    const totalSpent = budgetComparison.reduce((sum, b) => sum + b.spent, 0);
 
     const getPeriodLabel = () => {
         if (selectedPeriod === 'current') return 'Este mes';
@@ -143,6 +180,74 @@ export function Dashboard({ transactions }: DashboardProps) {
                 <StatCard title="Ingresos" value={stats.income} type="income" />
                 <StatCard title="Gastos" value={stats.expense} type="expense" />
             </div>
+
+            {/* Budget vs Spending Chart */}
+            {budgetChartData.length > 0 && (
+                <Card>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-semibold text-lg text-white flex items-center gap-2">
+                            <Wallet size={20} className="text-blue-400" />
+                            Presupuesto vs Gasto Real
+                        </h3>
+                        <div className="flex items-center gap-4 text-sm">
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-sm bg-blue-500" />
+                                <span className="text-slate-400">Presupuesto</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-sm bg-rose-500" />
+                                <span className="text-slate-400">Gastado</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Summary bar */}
+                    <div className="mb-4 p-3 bg-slate-800/50 rounded-lg">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-slate-400 text-sm">Total del mes</span>
+                            <span className={`font-semibold ${totalBudgeted - totalSpent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                {totalBudgeted - totalSpent >= 0 ? '✅' : '⚠️'} {Math.abs(totalBudgeted - totalSpent).toFixed(0)}€ {totalBudgeted - totalSpent >= 0 ? 'bajo presupuesto' : 'excedido'}
+                            </span>
+                        </div>
+                        <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                                className={`h-full transition-all ${totalSpent > totalBudgeted ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                                style={{ width: `${Math.min((totalSpent / totalBudgeted) * 100, 100)}%` }}
+                            />
+                        </div>
+                        <div className="flex justify-between text-xs text-slate-500 mt-1">
+                            <span>Gastado: {totalSpent.toFixed(0)}€</span>
+                            <span>Presupuesto: {totalBudgeted.toFixed(0)}€</span>
+                        </div>
+                    </div>
+
+                    <div className="h-72">
+                        {loadingBudget ? (
+                            <div className="h-full flex items-center justify-center">
+                                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                            </div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={budgetChartData} layout="vertical" margin={{ top: 5, right: 30, left: 50, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={true} vertical={false} />
+                                    <XAxis type="number" stroke="#94a3b8" tick={{ fill: '#94a3b8' }} tickFormatter={(v) => `${v}€`} />
+                                    <YAxis type="category" dataKey="name" stroke="#94a3b8" tick={{ fill: '#94a3b8' }} width={80} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                                        formatter={(value, name) => [`${Number(value).toFixed(2)} €`, name === 'presupuesto' ? 'Presupuesto' : 'Gastado']}
+                                        labelFormatter={(label) => {
+                                            const item = budgetChartData.find(d => d.name === label);
+                                            return item?.fullName || label;
+                                        }}
+                                    />
+                                    <Bar dataKey="presupuesto" name="Presupuesto" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={12} />
+                                    <Bar dataKey="gastado" name="Gastado" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={12} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        )}
+                    </div>
+                </Card>
+            )}
 
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -253,3 +358,4 @@ function processCategoryData(transactions: any[]) {
     });
     return Object.entries(grouped).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 8);
 }
+

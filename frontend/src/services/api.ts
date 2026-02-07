@@ -61,7 +61,16 @@ export const getAccounts = async () => {
 };
 
 // Categories
-export const getCategories = async () => {
+export interface Category {
+    id: number;
+    name: string;
+    color: string;
+    is_income: boolean;
+    parent: number | null;
+    user: number;
+}
+
+export const getCategories = async (): Promise<Category[]> => {
     const response = await api.get('/categories/');
     return response.data;
 };
@@ -119,4 +128,57 @@ export const generateInsights = async () => {
     return response.data;
 };
 
+// ===================== BUDGET API =====================
+
+export interface Budget {
+    id: number;
+    category: number;
+    category_name: string;
+    category_color: string;
+    amount: string;
+    month: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface BudgetComparison {
+    category_id: number;
+    category_name: string;
+    category_color: string;
+    budgeted: number;
+    spent: number;
+    difference: number;
+    percentage: number;
+}
+
+export interface BudgetComparisonResponse {
+    month: string;
+    comparison: BudgetComparison[];
+    total_budgeted: number;
+    total_spent: number;
+}
+
+export const getBudgets = async (month?: string): Promise<Budget[]> => {
+    const params = month ? { month } : {};
+    const response = await api.get('/budgets/', { params });
+    return response.data;
+};
+
+export const saveBudgets = async (budgets: { category_id: number; amount: number }[], month: string) => {
+    const response = await api.post('/budgets/bulk_save/', { budgets, month });
+    return response.data;
+};
+
+export const getBudgetComparison = async (month?: string): Promise<BudgetComparisonResponse> => {
+    const params = month ? { month } : {};
+    const response = await api.get('/budgets/comparison/', { params });
+    return response.data;
+};
+
+export const getBudgetAdvice = async (month?: string): Promise<string> => {
+    const response = await api.post('/budgets/get_advice/', { month });
+    return response.data.advice;
+};
+
 export default api;
+

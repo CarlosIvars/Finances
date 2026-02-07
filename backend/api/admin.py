@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Account, Category, Transaction, ImportBatch, ClassificationRule
+from .models import Account, Category, Transaction, ImportBatch, ClassificationRule, Alert, Budget, LLMPrompt
 
 
 @admin.register(Account)
@@ -96,3 +96,47 @@ class ClassificationRuleAdmin(admin.ModelAdmin):
             description__icontains=obj.keyword
         ).count()
     matches_count.short_description = 'Coincidencias'
+
+
+@admin.register(Alert)
+class AlertAdmin(admin.ModelAdmin):
+    list_display = ('icon', 'title', 'type', 'user', 'is_read', 'created_at')
+    list_filter = ('type', 'is_read', 'is_dismissed', 'user')
+    search_fields = ('title', 'message')
+    ordering = ('-created_at',)
+    list_per_page = 30
+
+
+@admin.register(Budget)
+class BudgetAdmin(admin.ModelAdmin):
+    list_display = ('category', 'amount_display', 'month', 'user', 'updated_at')
+    list_filter = ('month', 'user', 'category')
+    list_editable = ('month',)
+    ordering = ('month', 'category__name')
+    
+    def amount_display(self, obj):
+        return f"{obj.amount:.2f} €"
+    amount_display.short_description = 'Presupuesto'
+
+
+@admin.register(LLMPrompt)
+class LLMPromptAdmin(admin.ModelAdmin):
+    list_display = ('name', 'short_description', 'is_active', 'updated_at')
+    list_filter = ('is_active', 'name')
+    search_fields = ('content', 'description')
+    ordering = ('name',)
+    
+    fieldsets = (
+        ('Identificación', {
+            'fields': ('name', 'description', 'is_active')
+        }),
+        ('Contenido del Prompt', {
+            'fields': ('content',),
+            'description': 'Usa variables como {total}, {categories}, {recurring}, etc.'
+        }),
+    )
+    
+    def short_description(self, obj):
+        return obj.description[:50] + '...' if len(obj.description) > 50 else obj.description
+    short_description.short_description = 'Descripción'
+

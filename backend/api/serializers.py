@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Account, Category, Transaction, ImportBatch, ClassificationRule, Alert
+from .models import Account, Category, Transaction, ImportBatch, ClassificationRule, Alert, Budget
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -36,3 +36,12 @@ class AlertSerializer(serializers.ModelSerializer):
         fields = ['id', 'type', 'title', 'message', 'icon', 'is_read', 'is_dismissed', 'created_at', 'related_data']
         read_only_fields = ['user', 'created_at']
 
+
+class BudgetSerializer(serializers.ModelSerializer):
+    category_name = serializers.ReadOnlyField(source='category.name')
+    category_color = serializers.ReadOnlyField(source='category.color')
+    
+    class Meta:
+        model = Budget
+        fields = ['id', 'category', 'category_name', 'category_color', 'amount', 'month', 'created_at', 'updated_at']
+        read_only_fields = ['user', 'created_at', 'updated_at']

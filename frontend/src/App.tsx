@@ -7,6 +7,7 @@ import { ImportPage } from './pages/ImportPage';
 import { LoginPage } from './pages/LoginPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { InsightsPage } from './pages/InsightsPage';
+import { BudgetPage } from './pages/BudgetPage';
 import { Loader2 } from 'lucide-react';
 
 function App() {
@@ -95,6 +96,8 @@ function App() {
         return <TransactionsPage transactions={transactions} onTransactionUpdated={fetchData} />;
       case 'analytics':
         return <AnalyticsPage transactions={transactions} />;
+      case 'budget':
+        return <BudgetPage />;
       case 'insights':
         return <InsightsPage />;
       case 'import':
