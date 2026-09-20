@@ -14,7 +14,16 @@ interface DashboardProps {
     transactions: any[];
 }
 
-const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+const COLORS = [
+    '#6366f1', // Indigo
+    '#8b5cf6', // Violet
+    '#ec4899', // Pink
+    '#f43f5e', // Rose
+    '#f97316', // Orange
+    '#eab308', // Yellow
+    '#10b981', // Emerald
+    '#0ea5e9', // Sky
+];
 
 export function Dashboard({ transactions }: DashboardProps) {
     const [selectedPeriod, setSelectedPeriod] = useState('current'); // current, all, or specific month
@@ -123,8 +132,8 @@ export function Dashboard({ transactions }: DashboardProps) {
             {/* Header with Month Selector and AI Button */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold text-white mb-2">Resumen Financiero</h2>
-                    <p className="text-slate-400 flex items-center gap-2">
+                    <h2 className="text-3xl font-heading font-bold text-foreground mb-1 tracking-tight">Resumen Financiero</h2>
+                    <p className="text-muted-foreground text-sm font-medium flex items-center gap-2">
                         <Calendar size={16} />
                         {getPeriodLabel()}
                     </p>
@@ -150,7 +159,7 @@ export function Dashboard({ transactions }: DashboardProps) {
                         <select
                             value={selectedPeriod}
                             onChange={(e) => setSelectedPeriod(e.target.value)}
-                            className="appearance-none bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 pr-10 text-white cursor-pointer hover:border-slate-600 focus:outline-none focus:border-blue-500"
+                            className="appearance-none bg-card border border-border rounded-lg px-4 py-2.5 pr-10 text-foreground font-medium text-sm cursor-pointer hover:border-muted-foreground/30 focus:outline-none focus:ring-1 focus:ring-ring transition-colors shadow-sm"
                         >
                             <option value="current">Este mes</option>
                             <option value="all">Histórico completo</option>
@@ -162,14 +171,14 @@ export function Dashboard({ transactions }: DashboardProps) {
                                 })}
                             </optgroup>
                         </select>
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" size={16} />
                     </div>
                 </div>
             </div>
 
             {/* AI Message Toast */}
             {aiMessage && (
-                <div className="bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-200 animate-in slide-in-from-top-2 duration-200">
+                <div className="bg-card border border-border rounded-lg px-4 py-3 text-sm font-medium text-foreground shadow-sm animate-in slide-in-from-top-2 duration-200">
                     {aiMessage}
                 </div>
             )}
@@ -184,38 +193,38 @@ export function Dashboard({ transactions }: DashboardProps) {
             {/* Budget vs Spending Chart */}
             {budgetChartData.length > 0 && (
                 <Card>
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-semibold text-lg text-white flex items-center gap-2">
-                            <Wallet size={20} className="text-blue-400" />
+                    <div className="flex justify-between items-center mb-5">
+                        <h3 className="font-heading font-semibold text-lg text-foreground flex items-center gap-2 tracking-tight">
+                            <Wallet size={20} className="text-primary" />
                             Presupuesto vs Gasto Real
                         </h3>
-                        <div className="flex items-center gap-4 text-sm">
+                        <div className="flex items-center gap-4 text-xs font-medium">
                             <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-sm bg-blue-500" />
-                                <span className="text-slate-400">Presupuesto</span>
+                                <div className="w-2.5 h-2.5 rounded-[3px] bg-indigo-500" />
+                                <span className="text-muted-foreground">Presupuesto</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-sm bg-rose-500" />
-                                <span className="text-slate-400">Gastado</span>
+                                <div className="w-2.5 h-2.5 rounded-[3px] bg-rose-500" />
+                                <span className="text-muted-foreground">Gastado</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Summary bar */}
-                    <div className="mb-4 p-3 bg-slate-800/50 rounded-lg">
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-slate-400 text-sm">Total del mes</span>
-                            <span className={`font-semibold ${totalBudgeted - totalSpent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <div className="mb-6 p-4 bg-accent border border-border rounded-xl">
+                        <div className="flex justify-between items-center mb-3">
+                            <span className="text-muted-foreground text-sm font-medium uppercase tracking-wider text-xs">Total del mes</span>
+                            <span className={`font-semibold text-sm ${totalBudgeted - totalSpent >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
                                 {totalBudgeted - totalSpent >= 0 ? '✅' : '⚠️'} {Math.abs(totalBudgeted - totalSpent).toFixed(0)}€ {totalBudgeted - totalSpent >= 0 ? 'bajo presupuesto' : 'excedido'}
                             </span>
                         </div>
-                        <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                        <div className="h-2.5 bg-border rounded-full overflow-hidden">
                             <div
-                                className={`h-full transition-all ${totalSpent > totalBudgeted ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                                className={`h-full transition-all ${totalSpent > totalBudgeted ? 'bg-destructive' : 'bg-primary'}`}
                                 style={{ width: `${Math.min((totalSpent / totalBudgeted) * 100, 100)}%` }}
                             />
                         </div>
-                        <div className="flex justify-between text-xs text-slate-500 mt-1">
+                        <div className="flex justify-between text-xs font-semibold text-muted-foreground mt-2">
                             <span>Gastado: {totalSpent.toFixed(0)}€</span>
                             <span>Presupuesto: {totalBudgeted.toFixed(0)}€</span>
                         </div>
@@ -229,6 +238,16 @@ export function Dashboard({ transactions }: DashboardProps) {
                         ) : (
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={budgetChartData} layout="vertical" margin={{ top: 5, right: 30, left: 50, bottom: 5 }}>
+                                    <defs>
+                                        <linearGradient id="colorBudget" x1="0" y1="0" x2="1" y2="0">
+                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.9} />
+                                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.9} />
+                                        </linearGradient>
+                                        <linearGradient id="colorSpent" x1="0" y1="0" x2="1" y2="0">
+                                            <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.9} />
+                                            <stop offset="95%" stopColor="#fb7185" stopOpacity={0.9} />
+                                        </linearGradient>
+                                    </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={true} vertical={false} />
                                     <XAxis type="number" stroke="#94a3b8" tick={{ fill: '#94a3b8' }} tickFormatter={(v) => `${v}€`} />
                                     <YAxis type="category" dataKey="name" stroke="#94a3b8" tick={{ fill: '#94a3b8' }} width={80} />
@@ -239,9 +258,10 @@ export function Dashboard({ transactions }: DashboardProps) {
                                             const item = budgetChartData.find(d => d.name === label);
                                             return item?.fullName || label;
                                         }}
+                                        cursor={{ fill: 'var(--accent)', opacity: 0.1 }}
                                     />
-                                    <Bar dataKey="presupuesto" name="Presupuesto" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={12} />
-                                    <Bar dataKey="gastado" name="Gastado" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={12} />
+                                    <Bar dataKey="presupuesto" name="Presupuesto" fill="url(#colorBudget)" radius={[0, 4, 4, 0]} barSize={12} />
+                                    <Bar dataKey="gastado" name="Gastado" fill="url(#colorSpent)" radius={[0, 4, 4, 0]} barSize={12} />
                                 </BarChart>
                             </ResponsiveContainer>
                         )}
@@ -253,16 +273,29 @@ export function Dashboard({ transactions }: DashboardProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Bar Chart */}
                 <Card>
-                    <h3 className="font-semibold text-lg text-white mb-4">Ingresos vs Gastos (Mensual)</h3>
+                    <h3 className="font-heading font-semibold text-lg text-foreground mb-4 tracking-tight">Ingresos vs Gastos (Mensual)</h3>
                     <div className="h-72">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={monthlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                                <XAxis dataKey="month" stroke="#94a3b8" tick={{ fill: '#94a3b8' }} />
-                                <YAxis stroke="#94a3b8" tick={{ fill: '#94a3b8' }} tickFormatter={(v) => `${v}€`} />
-                                <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }} />
-                                <Bar dataKey="income" name="Ingresos" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="expense" name="Gastos" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                                <defs>
+                                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.9} />
+                                        <stop offset="95%" stopColor="#34d399" stopOpacity={0.3} />
+                                    </linearGradient>
+                                    <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.9} />
+                                        <stop offset="95%" stopColor="#fb7185" stopOpacity={0.3} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.6} vertical={false} />
+                                <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
+                                <YAxis stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}€`} />
+                                <Tooltip 
+                                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' }} 
+                                    cursor={{ fill: 'var(--accent)', opacity: 0.2 }}
+                                />
+                                <Bar dataKey="income" name="Ingresos" fill="url(#colorIncome)" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                <Bar dataKey="expense" name="Gastos" fill="url(#colorExpense)" radius={[4, 4, 0, 0]} maxBarSize={40} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -270,7 +303,7 @@ export function Dashboard({ transactions }: DashboardProps) {
 
                 {/* Pie Chart */}
                 <Card>
-                    <h3 className="font-semibold text-lg text-white mb-4">Distribución de Gastos ({getPeriodLabel()})</h3>
+                    <h3 className="font-heading font-semibold text-lg text-foreground mb-4 tracking-tight">Distribución de Gastos ({getPeriodLabel()})</h3>
                     <div className="h-72">
                         {categoryData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
@@ -291,8 +324,9 @@ export function Dashboard({ transactions }: DashboardProps) {
                                         ))}
                                     </Pie>
                                     <Tooltip
-                                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                                        contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' }}
                                         formatter={(value, name) => [`${Number(value).toFixed(2)} €`, name]}
+                                        cursor={{ fill: 'var(--accent)', opacity: 0.2 }}
                                     />
                                     <Legend layout="horizontal" verticalAlign="bottom" align="center" />
                                 </PieChart>
@@ -309,19 +343,19 @@ export function Dashboard({ transactions }: DashboardProps) {
             {/* Recent Transactions */}
             <Card>
                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-semibold text-lg text-white">Movimientos Recientes</h3>
+                    <h3 className="font-heading font-semibold text-lg text-foreground tracking-tight">Movimientos Recientes</h3>
                 </div>
-                <div className="divide-y divide-white/10">
+                <div className="divide-y divide-border">
                     {filteredTransactions.slice(0, 8).map((t, idx) => (
-                        <div key={idx} className="py-3 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className={`w-2 h-2 rounded-full ${t.type === 'income' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                        <div key={idx} className="py-3.5 flex items-center justify-between group">
+                            <div className="flex items-center gap-3.5">
+                                <div className={`w-2 h-2 rounded-full ${t.type === 'income' ? 'bg-emerald-500' : 'bg-destructive'}`} />
                                 <div>
-                                    <p className="text-sm font-medium text-white truncate max-w-xs">{t.description}</p>
-                                    <p className="text-xs text-slate-500">{t.date} • {t.category_name || 'Sin categoría'}</p>
+                                    <p className="text-sm font-semibold text-foreground truncate max-w-xs">{t.description}</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5 font-medium">{t.date} • {t.category_name || 'Sin categoría'}</p>
                                 </div>
                             </div>
-                            <span className={`text-sm font-semibold ${t.type === 'income' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            <span className={`text-sm font-semibold ${t.type === 'income' ? 'text-emerald-500' : 'text-foreground'}`}>
                                 {t.type === 'income' ? '+' : '-'}{Math.abs(t.amount).toFixed(2)} €
                             </span>
                         </div>

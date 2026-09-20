@@ -37,17 +37,17 @@ export function StatCard({ title, value, type, trend }: StatCardProps) {
         <Card>
             <div className="flex items-start justify-between">
                 <div>
-                    <p className="text-slate-400 text-sm font-medium mb-1">{title}</p>
-                    <h3 className="text-3xl font-bold text-white tracking-tight">
+                    <p className="text-muted-foreground text-xs font-semibold mb-1 tracking-wider uppercase">{title}</p>
+                    <h3 className="text-3xl font-heading font-bold text-foreground tracking-tight">
                         {value.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
                     </h3>
                     {trend && (
-                        <p className={`text-xs mt-2 font-medium ${style.trendColor} flex items-center gap-1`}>
+                        <p className={`text-xs mt-2 font-medium ${style.trendColor} flex items-center gap-1 bg-accent inline-flex px-2 py-0.5 rounded-full border border-border`}>
                             {trend > 0 ? '+' : ''}{trend}% vs mes anterior
                         </p>
                     )}
                 </div>
-                <div className={`p-3 rounded-xl ${style.bg} backdrop-blur-sm border border-white/5 shadow-inner`}>
+                <div className={`h-10 w-10 shrink-0 rounded-lg flex items-center justify-center ${style.bg} ${style.text}`}>
                     {style.icon}
                 </div>
             </div>

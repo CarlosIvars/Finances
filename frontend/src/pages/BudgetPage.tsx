@@ -129,8 +129,8 @@ export function BudgetPage() {
             {/* Header */}
             <div className="flex justify-between items-center flex-wrap gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold text-white mb-2">💰 Presupuesto Mensual</h2>
-                    <p className="text-slate-400">Define cuánto planeas gastar en cada categoría</p>
+                    <h2 className="text-3xl font-heading font-bold text-foreground mb-1 tracking-tight">💰 Presupuesto Mensual</h2>
+                    <p className="text-muted-foreground font-medium mt-1">Define cuánto planeas gastar en cada categoría</p>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -138,14 +138,14 @@ export function BudgetPage() {
                     <div className="relative">
                         <button
                             onClick={() => setShowMonthPicker(!showMonthPicker)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white hover:bg-slate-700 transition-all"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-background border border-border rounded-lg text-foreground hover:bg-accent transition-all shadow-sm font-medium text-sm"
                         >
                             <span className="capitalize">{formatMonth(selectedMonth)}</span>
                             <ChevronDown size={16} />
                         </button>
 
                         {showMonthPicker && (
-                            <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10 max-h-64 overflow-y-auto">
+                            <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-md z-10 max-h-64 overflow-y-auto overflow-hidden">
                                 {availableMonths.map(m => (
                                     <button
                                         key={m.value}
@@ -153,7 +153,7 @@ export function BudgetPage() {
                                             setSelectedMonth(m.value);
                                             setShowMonthPicker(false);
                                         }}
-                                        className={`w-full text-left px-4 py-2 hover:bg-slate-700 capitalize ${selectedMonth === m.value ? 'text-blue-400 bg-slate-700/50' : 'text-slate-300'
+                                        className={`w-full text-left px-4 py-2 hover:bg-accent capitalize text-sm transition-colors ${selectedMonth === m.value ? 'text-primary bg-primary/10 font-medium' : 'text-muted-foreground'
                                             }`}
                                     >
                                         {m.label}
@@ -183,20 +183,20 @@ export function BudgetPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card>
                     <div className="text-center py-4">
-                        <p className="text-slate-400 text-sm mb-1">Presupuesto Total</p>
-                        <p className="text-2xl font-bold text-white">{totalBudgeted.toFixed(2)} €</p>
+                        <p className="text-muted-foreground font-medium text-sm mb-1 uppercase tracking-wider">Presupuesto Total</p>
+                        <p className="text-2xl font-heading font-bold text-foreground tracking-tight">{totalBudgeted.toFixed(2)} €</p>
                     </div>
                 </Card>
                 <Card>
                     <div className="text-center py-4">
-                        <p className="text-slate-400 text-sm mb-1">Gastado</p>
-                        <p className="text-2xl font-bold text-rose-400">{totalSpent.toFixed(2)} €</p>
+                        <p className="text-muted-foreground font-medium text-sm mb-1 uppercase tracking-wider">Gastado</p>
+                        <p className="text-2xl font-heading font-bold text-destructive tracking-tight">{totalSpent.toFixed(2)} €</p>
                     </div>
                 </Card>
                 <Card>
                     <div className="text-center py-4">
-                        <p className="text-slate-400 text-sm mb-1">Diferencia</p>
-                        <p className={`text-2xl font-bold ${totalBudgeted - totalSpent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        <p className="text-muted-foreground font-medium text-sm mb-1 uppercase tracking-wider">Diferencia</p>
+                        <p className={`text-2xl font-heading font-bold tracking-tight ${totalBudgeted - totalSpent >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
                             {(totalBudgeted - totalSpent).toFixed(2)} €
                         </p>
                     </div>
@@ -206,9 +206,9 @@ export function BudgetPage() {
             {/* Budget Form */}
             <Card>
                 <div className="p-2">
-                    <h3 className="text-lg font-semibold text-white mb-4 px-2">Presupuesto por Categoría</h3>
+                    <h3 className="text-lg font-heading tracking-tight font-semibold text-foreground mb-4 px-2">Presupuesto por Categoría</h3>
 
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                         {categories.map(cat => {
                             const comp = getComparisonForCategory(cat.id);
                             const budget = budgets[cat.id] || 0;
@@ -219,23 +219,23 @@ export function BudgetPage() {
                             return (
                                 <div
                                     key={cat.id}
-                                    className={`p-4 rounded-xl border ${isOver ? 'border-rose-500/30 bg-rose-500/5' : 'border-slate-700/50 bg-slate-800/30'}`}
+                                    className={`p-4 rounded-xl border transition-colors ${isOver ? 'border-destructive/30 bg-destructive/5' : 'border-border bg-accent/30 hover:bg-accent/50'}`}
                                 >
                                     <div className="flex items-center gap-4">
                                         {/* Color indicator */}
                                         <div
-                                            className="w-3 h-10 rounded-full flex-shrink-0"
+                                            className="w-2.5 h-10 rounded-full flex-shrink-0"
                                             style={{ backgroundColor: cat.color }}
                                         />
 
                                         {/* Category name */}
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-white truncate">{cat.name}</p>
+                                            <p className="font-semibold text-foreground truncate">{cat.name}</p>
                                             {budget > 0 && (
-                                                <div className="mt-1">
-                                                    <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                                <div className="mt-2">
+                                                    <div className="h-1.5 bg-border rounded-full overflow-hidden">
                                                         <div
-                                                            className={`h-full rounded-full transition-all ${isOver ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                                                            className={`h-full rounded-full transition-all ${isOver ? 'bg-destructive' : 'bg-primary'}`}
                                                             style={{ width: `${percentage}%` }}
                                                         />
                                                     </div>
@@ -250,15 +250,15 @@ export function BudgetPage() {
                                                 value={budget || ''}
                                                 onChange={(e) => handleBudgetChange(cat.id, e.target.value)}
                                                 placeholder="0"
-                                                className="w-24 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className="w-24 px-3 py-2 bg-background border border-border rounded-lg text-foreground text-right focus:outline-none focus:ring-1 focus:ring-ring transition-colors shadow-sm"
                                             />
-                                            <span className="text-slate-400">€</span>
+                                            <span className="text-muted-foreground font-medium">€</span>
                                         </div>
 
                                         {/* Spent */}
                                         <div className="w-28 text-right">
-                                            <p className="text-sm text-slate-400">Gastado</p>
-                                            <p className={`font-medium ${isOver ? 'text-rose-400' : 'text-slate-300'}`}>
+                                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">Gastado</p>
+                                            <p className={`font-semibold tracking-tight ${isOver ? 'text-destructive' : 'text-foreground'}`}>
                                                 {spent.toFixed(2)} €
                                             </p>
                                         </div>
@@ -285,14 +285,14 @@ export function BudgetPage() {
             <Card>
                 <div className="p-4">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                            <Sparkles className="text-purple-400" size={20} />
+                        <h3 className="text-lg font-heading tracking-tight font-semibold text-foreground flex items-center gap-2">
+                            <Sparkles className="text-primary" size={20} />
                             Consejos IA
                         </h3>
                         <button
                             onClick={handleGetAdvice}
                             disabled={gettingAdvice}
-                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 rounded-lg text-white text-sm font-medium transition-all disabled:opacity-50"
+                            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 rounded-lg text-primary-foreground text-sm font-medium transition-all disabled:opacity-50 shadow-sm"
                         >
                             {gettingAdvice ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -304,11 +304,11 @@ export function BudgetPage() {
                     </div>
 
                     {advice ? (
-                        <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                            <p className="text-slate-300 whitespace-pre-wrap leading-relaxed">{advice}</p>
+                        <div className="p-4 bg-accent/50 border border-border rounded-xl">
+                            <p className="text-foreground whitespace-pre-wrap leading-relaxed">{advice}</p>
                         </div>
                     ) : (
-                        <p className="text-slate-500 text-center py-8">
+                        <p className="text-muted-foreground text-center py-8 font-medium">
                             Haz clic en "Obtener Consejos" para recibir recomendaciones personalizadas sobre cómo reducir tus gastos.
                         </p>
                     )}

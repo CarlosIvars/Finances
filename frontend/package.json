@@ -11,10 +11,13 @@
   },
   "dependencies": {
     "axios": "^1.13.4",
+    "idb": "^8.0.3",
     "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "recharts": "^3.7.0"
+    "recharts": "^3.7.0",
+    "vite-plugin-pwa": "^1.2.0",
+    "workbox-window": "^7.4.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

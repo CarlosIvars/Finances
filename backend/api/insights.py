@@ -1,6 +1,7 @@
 """
 Servicio de Insights IA usando LangChain.
 Soporta: OpenAI, LM Studio (local), o reglas heurísticas como fallback.
+RGPD: Anonimización de datos antes de envío a LLM + verificación de consentimiento.
 """
 import os
 import re
@@ -11,7 +12,7 @@ from django.db.models import Sum, Avg, Count
 from django.db.models.functions import TruncMonth
 from django.contrib.auth.models import User
 
-from .models import Transaction, Category, Alert
+from .models import Transaction, Category, Alert, UserConsent
 
 
 def clean_llm_response(text: str) -> str:
@@ -25,6 +26,29 @@ def clean_llm_response(text: str) -> str:
     text = re.sub(r'</?think>', '', text)
     # Clean up extra whitespace
     text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
+
+
+def anonymize_for_llm(text: str) -> str:
+    """
+    RGPD: Anonimiza descripciones antes de enviarlas al LLM.
+    Elimina/reemplaza datos que podrían identificar o revelar datos sensibles.
+    """
+    # Posibles nombres propios (dos palabras capitalizadas seguidas)
+    text = re.sub(r'\b[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+ [A-ZÁÉÍÓÚÑ][a-záéíóúñ]+\b', '[NOMBRE]', text)
+    # DNI/NIE
+    text = re.sub(r'\b\d{8}[A-Z]\b', '[DOC_ID]', text)
+    text = re.sub(r'\b[XYZ]\d{7}[A-Z]\b', '[DOC_ID]', text)
+    # Teléfonos (9 dígitos)
+    text = re.sub(r'\b\d{9}\b', '[TELÉFONO]', text)
+    # Tarjetas de crédito parciales
+    text = re.sub(r'\b\d{4}[X*]+\d{4}\b', '[TARJETA]', text)
+    # IBAN
+    text = re.sub(r'\b[A-Z]{2}\d{2}[\s]?\d{4}[\s]?\d{4}[\s]?\d{4}[\s]?\d{4}[\s]?\d{4}\b', '[IBAN]', text)
+    # Patrones sensibles (salud, religión, política)
+    text = re.sub(r'(?i)(dr\.|clínica|hospital|farmacia|consultorio|médico)', '[ESTABLECIMIENTO]', text)
+    text = re.sub(r'(?i)(sindicato|partido|iglesia|mezquita|templo)', '[ORGANIZACIÓN]', text)
+    text = re.sub(r'(?i)(terapia|psicólog|psiquiat|rehabilitación)', '[SERVICIO]', text)
     return text.strip()
 
 
@@ -63,12 +87,21 @@ def get_spending_summary(user: User, months: int = 2) -> Dict[str, Any]:
         total=Sum('amount')
     ).filter(count__gte=2).order_by('-count')[:10]
     
+    # RGPD: Anonimizar descripciones de recurrentes antes de enviar al LLM
+    anonymized_recurring = [
+        {
+            **r,
+            'description': anonymize_for_llm(r['description'])
+        }
+        for r in recurring
+    ]
+    
     return {
         'by_category': list(by_category),
         'by_month': list(by_month),
         'total_expense': float(total_expense),
         'transaction_count': transaction_count,
-        'recurring': list(recurring),
+        'recurring': anonymized_recurring,
         'period_days': months * 30
     }
 
@@ -144,7 +177,16 @@ def get_llm_client():
 def generate_insights_with_ai(user: User) -> List[Dict]:
     """
     Genera insights usando LLM. Returns list of dicts with message and related_data.
+    RGPD: Verifica consentimiento antes de procesar.
     """
+    # RGPD: Verificar consentimiento para procesamiento IA
+    if not UserConsent.has_consent(user, 'ai_processing'):
+        return [{
+            'message': '🔒 El análisis con IA está desactivado. '
+                       'Actívalo desde Privacidad > Consentimientos para recibir insights personalizados.',
+            'related_data': {'type': 'consent_required', 'consent_type': 'ai_processing'}
+        }]
+
     from langchain_core.prompts import ChatPromptTemplate
     from langchain_core.output_parsers import StrOutputParser
     
@@ -152,7 +194,14 @@ def generate_insights_with_ai(user: User) -> List[Dict]:
     
     if not llm:
         return generate_insights_heuristic(user)
-    
+
+    # RGPD: Si el proveedor es externo (OpenAI), verificar consentimiento adicional
+    if provider == 'OpenAI' and not UserConsent.has_consent(user, 'external_ai'):
+        return [{
+            'message': '🔒 Para usar IA avanzada con proveedor externo, '
+                       'activa "Procesamiento por IA externa" en Privacidad > Consentimientos.',
+            'related_data': {'type': 'consent_required', 'consent_type': 'external_ai'}
+        }]    
     summary = get_spending_summary(user)
     
     category_text = "\n".join([
@@ -377,10 +426,16 @@ def generate_budget_advice(user, month) -> str:
     """
     Genera consejos IA sobre cómo reducir gastos basándose en el presupuesto.
     Usa prompts de la base de datos si están configurados.
+    RGPD: Verifica consentimiento antes de procesar.
     """
     from langchain_core.prompts import ChatPromptTemplate
     from langchain_core.output_parsers import StrOutputParser
     from .models import Budget, LLMPrompt
+
+    # RGPD: Verificar consentimiento para procesamiento IA
+    if not UserConsent.has_consent(user, 'ai_processing'):
+        return ('🔒 El análisis con IA está desactivado. '
+                'Actívalo desde Privacidad > Consentimientos.')
     
     llm, provider = get_llm_client()
     

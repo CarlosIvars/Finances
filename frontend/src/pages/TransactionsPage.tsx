@@ -123,23 +123,23 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold text-white">Movimientos</h2>
-                    <p className="text-slate-400">{filteredAndSorted.length} de {transactions.length} transacciones</p>
+                    <h2 className="text-3xl font-heading font-bold text-foreground tracking-tight">Movimientos</h2>
+                    <p className="text-muted-foreground font-medium mt-1">{filteredAndSorted.length} de {transactions.length} transacciones</p>
                 </div>
             </div>
 
             {/* Filters Row */}
             <Card>
                 <div className="flex flex-wrap gap-4 items-center">
-                    <Filter size={18} className="text-slate-400" />
+                    <Filter size={18} className="text-muted-foreground" />
 
                     {/* Search */}
                     <div className="relative flex-1 min-w-[200px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
                         <input
                             type="text"
                             placeholder="Buscar concepto..."
-                            className="w-full pl-9 pr-4 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+                            className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-ring transition-colors shadow-sm"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -147,11 +147,11 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
 
                     {/* Month Filter */}
                     <div className="flex items-center gap-2">
-                        <Calendar size={16} className="text-slate-400" />
+                        <Calendar size={16} className="text-muted-foreground" />
                         <select
                             value={filterMonth}
                             onChange={(e) => setFilterMonth(e.target.value)}
-                            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+                            className="appearance-none bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm shadow-sm cursor-pointer hover:border-muted-foreground/30 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                         >
                             <option value="all">Todos los meses</option>
                             {availableMonths.map(m => {
@@ -166,7 +166,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                     <select
                         value={filterType}
                         onChange={(e) => setFilterType(e.target.value)}
-                        className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+                        className="appearance-none bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm shadow-sm cursor-pointer hover:border-muted-foreground/30 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                     >
                         <option value="all">Todos los tipos</option>
                         <option value="income">Ingresos</option>
@@ -177,7 +177,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                     <select
                         value={filterCategory}
                         onChange={(e) => setFilterCategory(e.target.value)}
-                        className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+                        className="appearance-none bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm shadow-sm cursor-pointer hover:border-muted-foreground/30 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                     >
                         <option value="all">Todas las categorías</option>
                         <option value="pending">⚠️ Sin categoría</option>
@@ -192,10 +192,10 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
             <Card noPadding className="overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-900/50 text-xs font-semibold tracking-wider text-slate-500 border-b border-white/5">
+                        <thead className="bg-muted/30 text-xs font-semibold tracking-wider text-muted-foreground border-b border-border">
                             <tr>
                                 <th
-                                    className="px-6 py-4 cursor-pointer hover:text-white transition-colors"
+                                    className="px-6 py-4 cursor-pointer hover:text-foreground transition-colors"
                                     onClick={() => handleSort('date')}
                                 >
                                     <div className="flex items-center gap-1">
@@ -203,7 +203,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                     </div>
                                 </th>
                                 <th
-                                    className="px-6 py-4 cursor-pointer hover:text-white transition-colors"
+                                    className="px-6 py-4 cursor-pointer hover:text-foreground transition-colors"
                                     onClick={() => handleSort('description')}
                                 >
                                     <div className="flex items-center gap-1">
@@ -211,7 +211,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                     </div>
                                 </th>
                                 <th
-                                    className="px-6 py-4 cursor-pointer hover:text-white transition-colors"
+                                    className="px-6 py-4 cursor-pointer hover:text-foreground transition-colors"
                                     onClick={() => handleSort('category')}
                                 >
                                     <div className="flex items-center gap-1">
@@ -219,7 +219,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                     </div>
                                 </th>
                                 <th
-                                    className="px-6 py-4 text-right cursor-pointer hover:text-white transition-colors"
+                                    className="px-6 py-4 text-right cursor-pointer hover:text-foreground transition-colors"
                                     onClick={() => handleSort('amount')}
                                 >
                                     <div className="flex items-center justify-end gap-1">
@@ -228,14 +228,14 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody className="divide-y divide-border">
                             {filteredAndSorted.map((t) => (
-                                <tr key={t.id} className="hover:bg-white/5 transition duration-150 group">
-                                    <td className="px-6 py-4 font-medium text-slate-300 whitespace-nowrap">
+                                <tr key={t.id} className="hover:bg-muted/50 transition duration-150 group">
+                                    <td className="px-6 py-4 font-medium text-muted-foreground whitespace-nowrap">
                                         {new Date(t.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="max-w-sm truncate text-white group-hover:text-blue-300 transition-colors">
+                                        <div className="max-w-sm truncate text-foreground font-medium group-hover:text-primary transition-colors">
                                             {t.description}
                                         </div>
                                     </td>
@@ -243,7 +243,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                         {editingId === t.id ? (
                                             <div className="flex items-center gap-2">
                                                 <select
-                                                    className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white text-sm"
+                                                    className="appearance-none bg-background border border-border shadow-sm rounded px-2 py-1 text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                                                     value={selectedCategory || ''}
                                                     onChange={(e) => setSelectedCategory(Number(e.target.value))}
                                                 >
@@ -262,16 +262,16 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                         ) : (
                                             <button
                                                 onClick={() => { setEditingId(t.id); setSelectedCategory(t.category); }}
-                                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:ring-2 hover:ring-blue-500/50 ${t.category_name
-                                                        ? 'bg-slate-800 text-slate-300 border border-slate-700'
-                                                        : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
+                                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold shadow-sm cursor-pointer hover:ring-2 hover:ring-ring transition-colors ${t.category_name
+                                                        ? 'bg-accent text-accent-foreground border border-border'
+                                                        : 'bg-yellow-500/10 text-yellow-600 border border-yellow-500/20'
                                                     }`}
                                             >
                                                 {t.category_name || 'Asignar'}
                                             </button>
                                         )}
                                     </td>
-                                    <td className={`px-6 py-4 text-right font-medium tabular-nums ${t.type === 'income' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                    <td className={`px-6 py-4 text-right font-semibold tabular-nums ${t.type === 'income' ? 'text-emerald-500' : 'text-foreground'}`}>
                                         {t.type === 'income' ? '+' : '-'}{Math.abs(t.amount).toFixed(2)} €
                                     </td>
                                 </tr>
@@ -279,7 +279,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                             {filteredAndSorted.length === 0 && (
                                 <tr>
                                     <td colSpan={4} className="px-6 py-12 text-center">
-                                        <p className="text-slate-500">No se encontraron movimientos con estos filtros.</p>
+                                        <p className="text-muted-foreground">No se encontraron movimientos con estos filtros.</p>
                                     </td>
                                 </tr>
                             )}

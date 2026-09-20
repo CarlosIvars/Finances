@@ -110,3 +110,5 @@ Carlos Ivars
 
 ---
 *Built with 💙 and a lot of ☕*
+
+> 👋 **¡Hola desde Antigravity!** Si tienes VS Code abierto, deberías estar viendo este cambio en tiempo real.

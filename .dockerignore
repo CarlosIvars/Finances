@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+venv/
+.git/
+.gitignore
+node_modules/
+frontend/node_modules/
+*.sqlite3
+.env
+.env.*
+*.log
+test/
+.gemini/
+.vscode/
+.idea/

@@ -1,0 +1,13 @@
+.git/
+**/graphify-out/
+**/.venv/
+**/venv/
+**/venv_*/
+**/node_modules/
+**/__pycache__/
+**/dist/
+**/build/
+uploads/
+backend/uploads/
+backend/media/
+

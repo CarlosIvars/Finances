@@ -16,15 +16,91 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+// Flag to prevent multiple refresh calls simultaneously
+let isRefreshing = false;
+let failedQueue: { resolve: (value?: unknown) => void, reject: (reason?: any) => void }[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(token);
+        }
+    });
+    failedQueue = [];
+};
+
 // Handle 401 errors (token expired)
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
-        if (error.response?.status === 401) {
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-            window.location.reload();
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            
+            // Si es un error 401 tratando de refrescar el token en sí, deslogar y salir
+            if (originalRequest.url?.includes('/api/token/refresh/')) {
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+                window.location.reload();
+                return Promise.reject(error);
+            }
+
+            if (isRefreshing) {
+                return new Promise(function (resolve, reject) {
+                    failedQueue.push({ resolve, reject });
+                })
+                    .then(token => {
+                        originalRequest.headers['Authorization'] = 'Bearer ' + token;
+                        return axios(originalRequest);
+                    })
+                    .catch(err => {
+                        return Promise.reject(err);
+                    });
+            }
+
+            originalRequest._retry = true;
+            isRefreshing = true;
+
+            const refreshToken = localStorage.getItem('refresh_token');
+            if (!refreshToken) {
+                localStorage.removeItem('access_token');
+                window.location.reload();
+                return Promise.reject(error);
+            }
+
+            try {
+                // Obtenemos un nuevo access token usando el refresh
+                const response = await axios.post('/api/token/refresh/', {
+                    refresh: refreshToken
+                });
+
+                const { access, refresh } = response.data;
+                localStorage.setItem('access_token', access);
+                
+                // Algunos backends rotan el refresh_token
+                if (refresh) {
+                    localStorage.setItem('refresh_token', refresh);
+                }
+
+                api.defaults.headers.common['Authorization'] = 'Bearer ' + access;
+                originalRequest.headers['Authorization'] = 'Bearer ' + access;
+                
+                processQueue(null, access);
+                
+                return api(originalRequest);
+            } catch (err) {
+                processQueue(err, null);
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+                window.location.reload();
+                return Promise.reject(err);
+            } finally {
+                isRefreshing = false;
+            }
         }
+        
         return Promise.reject(error);
     }
 );
@@ -51,6 +127,20 @@ export const getTransactions = async () => {
 
 export const updateTransaction = async (id: number, data: { category?: number }) => {
     const response = await api.patch(`/transactions/${id}/`, data);
+    return response.data;
+};
+
+export interface CreateTransactionData {
+    description: string;
+    amount: number;
+    category: number | null;
+    date: string;
+    type: 'income' | 'expense';
+    account: number;
+}
+
+export const createTransaction = async (data: CreateTransactionData) => {
+    const response = await api.post('/transactions/', data);
     return response.data;
 };
 
@@ -178,6 +268,128 @@ export const getBudgetComparison = async (month?: string): Promise<BudgetCompari
 export const getBudgetAdvice = async (month?: string): Promise<string> => {
     const response = await api.post('/budgets/get_advice/', { month });
     return response.data.advice;
+};
+
+// ===================== RGPD / Privacy API =====================
+
+export interface ConsentType {
+    key: string;
+    label: string;
+    description: string;
+}
+
+export interface ConsentResponse {
+    consents: Record<string, boolean>;
+    available_types: ConsentType[];
+}
+
+export const getUserConsents = async (): Promise<ConsentResponse> => {
+    const response = await api.get('/user/consent/');
+    return response.data;
+};
+
+export const updateUserConsents = async (consents: Record<string, boolean>) => {
+    const response = await api.post('/user/consent/', { consents });
+    return response.data;
+};
+
+export const exportUserData = async () => {
+    const response = await api.get('/user/data/');
+    return response.data;
+};
+
+export const deleteUserAccount = async () => {
+    const response = await api.delete('/user/data/');
+    return response.data;
+};
+
+export const getProfilingInfo = async () => {
+    const response = await api.get('/user/profiling-info/');
+    return response.data;
+};
+
+// ===================== Open Banking API =====================
+
+export interface BankInstitution {
+    id: string;
+    name: string;
+    logo_url: string;
+    country: string;
+}
+
+export interface BankTransactionItem {
+    id: number;
+    external_transaction_id: string;
+    booking_date: string;
+    value_date: string | null;
+    amount: string;
+    currency: string;
+    description: string;
+    merchant_name: string;
+    category_code: string;
+    created_at: string;
+}
+
+export interface BankAccountItem {
+    id: number;
+    external_account_id: string;
+    iban: string;
+    name: string;
+    currency: string;
+    balance: string;
+    balance_updated_at: string | null;
+    account_type: string;
+    recent_transactions: BankTransactionItem[];
+}
+
+export interface BankConnectionItem {
+    id: number;
+    provider: string;
+    institution_id: string;
+    institution_name: string;
+    status: 'pending' | 'active' | 'expired' | 'error' | 'revoked';
+    consent_expires_at: string | null;
+    last_synced_at: string | null;
+    is_consent_valid: boolean;
+    accounts: BankAccountItem[];
+    created_at: string;
+    updated_at: string;
+}
+
+export const getBankInstitutions = async (): Promise<BankInstitution[]> => {
+    const response = await api.get('/banking/institutions/');
+    return response.data;
+};
+
+export const getBankConnections = async (): Promise<BankConnectionItem[]> => {
+    const response = await api.get('/banking/connections/');
+    return response.data;
+};
+
+export const connectBank = async (institutionId: string, redirectUrl?: string) => {
+    const response = await api.post('/banking/connections/', {
+        institution_id: institutionId,
+        redirect_url: redirectUrl,
+    });
+    return response.data;
+};
+
+export const disconnectBank = async (connectionId: number) => {
+    const response = await api.delete(`/banking/connections/${connectionId}/`);
+    return response.data;
+};
+
+export const syncBankConnection = async (connectionId: number) => {
+    const response = await api.post(`/banking/connections/${connectionId}/sync/`);
+    return response.data;
+};
+
+export const getBankAccountTransactions = async (
+    accountId: number,
+    params?: { date_from?: string; date_to?: string; limit?: number; offset?: number }
+) => {
+    const response = await api.get(`/banking/accounts/${accountId}/transactions/`, { params });
+    return response.data;
 };
 
 export default api;

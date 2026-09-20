@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Account, Category, Transaction, ImportBatch, ClassificationRule, Alert, Budget, LLMPrompt
+from .models import Account, Category, Transaction, ImportBatch, ClassificationRule, Alert, Budget, LLMPrompt, UserConsent, AuditLog
 
 
 @admin.register(Account)
@@ -140,3 +140,26 @@ class LLMPromptAdmin(admin.ModelAdmin):
         return obj.description[:50] + '...' if len(obj.description) > 50 else obj.description
     short_description.short_description = 'Descripción'
 
+
+@admin.register(UserConsent)
+class UserConsentAdmin(admin.ModelAdmin):
+    list_display = ('user', 'consent_type', 'granted', 'version', 'timestamp')
+    list_filter = ('consent_type', 'granted', 'version')
+    ordering = ('-timestamp',)
+    readonly_fields = ('timestamp',)
+    list_per_page = 50
+
+
+@admin.register(AuditLog)
+class AuditLogAdmin(admin.ModelAdmin):
+    list_display = ('timestamp', 'user', 'action', 'resource', 'ip_address')
+    list_filter = ('action', 'resource')
+    ordering = ('-timestamp',)
+    readonly_fields = ('user', 'action', 'resource', 'timestamp', 'ip_address', 'details')
+    list_per_page = 50
+
+    def has_add_permission(self, request):
+        return False  # Audit logs should never be created manually
+
+    def has_change_permission(self, request, obj=None):
+        return False  # Audit logs are immutable

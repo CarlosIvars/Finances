@@ -14,13 +14,28 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from pathlib import Path
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
+from django.http import HttpResponse
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from api.views import RegisterView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
+    path('api/banking/', include('banking.urls')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/register/', RegisterView.as_view(), name='register'),
 ]
+
+# SPA catch-all: serve index.html for any non-API route (production only)
+FRONTEND_INDEX = Path('/app/frontend-dist/index.html')
+if FRONTEND_INDEX.exists():
+    def spa_view(request):
+        return HttpResponse(
+            FRONTEND_INDEX.read_text(),
+            content_type='text/html'
+        )
+    urlpatterns += [re_path(r'^(?!api/|admin/).*$', spa_view)]

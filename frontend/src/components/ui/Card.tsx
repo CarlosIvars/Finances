@@ -10,17 +10,17 @@ export function Card({ children, className = '', noPadding = false }: CardProps)
     return (
         <div
             className={`
-        bg-white/5 backdrop-blur-xl 
-        border border-white/10 
-        rounded-2xl 
-        shadow-xl 
+        bg-card text-card-foreground
+        border border-border 
+        rounded-xl 
+        shadow-sm 
         overflow-hidden
         transition-all duration-300
-        hover:border-white/20 hover:shadow-2xl
+        hover:shadow-md hover:border-muted-foreground/30
         ${className}
       `}
         >
-            <div className={noPadding ? '' : 'p-6'}>
+            <div className={noPadding ? '' : 'p-6 relative z-10'}>
                 {children}
             </div>
         </div>

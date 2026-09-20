@@ -5,9 +5,10 @@ import { PieChart, User, Lock, AlertCircle } from 'lucide-react';
 
 interface LoginPageProps {
     onLogin: (token: string) => void;
+    onGoToRegister: () => void;
 }
 
-export function LoginPage({ onLogin }: LoginPageProps) {
+export function LoginPage({ onLogin, onGoToRegister }: LoginPageProps) {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -99,8 +100,14 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                     </form>
                 </Card>
 
-                <p className="text-center text-slate-500 text-sm mt-6">
-                    Usuario por defecto: <code className="text-slate-400">admin</code>
+                <p className="text-center text-slate-400 text-sm mt-6">
+                    ¿No tienes una cuenta?{' '}
+                    <button 
+                        onClick={onGoToRegister}
+                        className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                    >
+                        Regístrate
+                    </button>
                 </p>
             </div>
         </div>

@@ -1,19 +1,35 @@
 import { useState, useEffect } from 'react'
 import { getTransactions } from './services/api';
+import { startAutoSync } from './services/syncService';
 import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { TransactionsPage } from './pages/TransactionsPage';
 import { ImportPage } from './pages/ImportPage';
 import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { InsightsPage } from './pages/InsightsPage';
 import { BudgetPage } from './pages/BudgetPage';
+import { PrivacyPage } from './pages/PrivacyPage';
+import { BankingPage } from './pages/BankingPage';
+import { QuickExpenseForm } from './components/QuickExpenseForm';
 import { Loader2 } from 'lucide-react';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authView, setAuthView] = useState<'login' | 'register'>('login');
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname.includes('banking') || window.location.search.includes('connection')) {
+        if (window.location.pathname !== '/') {
+          window.history.replaceState({}, '', '/' + window.location.search);
+        }
+        return 'banking';
+      }
+    }
+    return 'dashboard';
+  });
   const [stats, setStats] = useState({ income: 0, expense: 0, balance: 0 });
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +42,13 @@ function App() {
     }
     setCheckingAuth(false);
   }, []);
+
+  // Start auto-sync when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      startAutoSync();
+    }
+  }, [isAuthenticated]);
 
   const handleLogin = (_token: string) => {
     setIsAuthenticated(true);
@@ -75,9 +98,18 @@ function App() {
     );
   }
 
-  // Show login if not authenticated
+  // Show login/register if not authenticated
   if (!isAuthenticated) {
-    return <LoginPage onLogin={handleLogin} />;
+    if (authView === 'register') {
+      return <RegisterPage 
+                onRegister={handleLogin} 
+                onGoToLogin={() => setAuthView('login')} 
+             />;
+    }
+    return <LoginPage 
+              onLogin={handleLogin} 
+              onGoToRegister={() => setAuthView('register')} 
+           />;
   }
 
   const renderContent = () => {
@@ -92,6 +124,8 @@ function App() {
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard stats={stats} transactions={transactions} />;
+      case 'banking':
+        return <BankingPage />;
       case 'transactions':
         return <TransactionsPage transactions={transactions} onTransactionUpdated={fetchData} />;
       case 'analytics':
@@ -102,6 +136,8 @@ function App() {
         return <InsightsPage />;
       case 'import':
         return <ImportPage />;
+      case 'privacy':
+        return <PrivacyPage onLogout={handleLogout} />;
       default:
         return (
           <div className="flex flex-col items-center justify-center h-full text-slate-500">
@@ -113,9 +149,12 @@ function App() {
   };
 
   return (
-    <Layout activeTab={activeTab} onTabChange={setActiveTab} onLogout={handleLogout}>
-      {renderContent()}
-    </Layout>
+    <>
+      <Layout activeTab={activeTab} onTabChange={setActiveTab} onLogout={handleLogout}>
+        {renderContent()}
+      </Layout>
+      <QuickExpenseForm onTransactionAdded={fetchData} />
+    </>
   )
 }
 

@@ -55,3 +55,7 @@ test/
 
 # Gemini artifacts (local development)
 .gemini/
+
+# Graphify generated artifacts
+**/graphify-out/
+venv_finance/

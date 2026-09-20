@@ -147,3 +147,82 @@ class LLMPrompt(models.Model):
             return prompt.content
         except cls.DoesNotExist:
             return default
+
+
+class UserConsent(models.Model):
+    """
+    RGPD Art. 7: Registro auditable de consentimientos del usuario.
+    Mantiene historial completo (nunca borrar, es prueba legal).
+    """
+    CONSENT_TYPES = [
+        ('terms_accepted', 'Términos y condiciones'),
+        ('ai_processing', 'Análisis con IA'),
+        ('external_ai', 'Procesamiento por IA externa'),
+        ('analytics', 'Analytics de uso'),
+        ('open_banking', 'Acceso a datos bancarios (Open Banking)'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='consents')
+    consent_type = models.CharField(max_length=50, choices=CONSENT_TYPES)
+    granted = models.BooleanField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    version = models.CharField(max_length=10, default='1.0', help_text="Versión de la política de privacidad")
+
+    class Meta:
+        ordering = ['-timestamp']
+        verbose_name = "Consentimiento"
+        verbose_name_plural = "Consentimientos"
+
+    def __str__(self):
+        status = "✅ concedido" if self.granted else "❌ revocado"
+        return f"{self.get_consent_type_display()} — {status} ({self.timestamp})"
+
+    @classmethod
+    def has_consent(cls, user, consent_type: str) -> bool:
+        """Devuelve si el usuario tiene consentimiento activo para un tipo dado."""
+        latest = cls.objects.filter(
+            user=user, consent_type=consent_type
+        ).order_by('-timestamp').first()
+        return latest.granted if latest else False
+
+    @classmethod
+    def get_all_consents(cls, user) -> dict:
+        """Devuelve estado actual de todos los consentimientos del usuario."""
+        result = {}
+        for consent_type, _label in cls.CONSENT_TYPES:
+            result[consent_type] = cls.has_consent(user, consent_type)
+        return result
+
+
+class AuditLog(models.Model):
+    """
+    RGPD: Registro de auditoría para accesos y operaciones sobre datos personales.
+    No almacena datos sensibles, solo metadata.
+    """
+    ACTION_TYPES = [
+        ('view', 'Ver datos'),
+        ('export', 'Exportar datos'),
+        ('delete', 'Eliminar datos'),
+        ('modify', 'Modificar datos'),
+        ('consent_change', 'Cambio de consentimiento'),
+        ('login', 'Inicio de sesión'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='audit_logs')
+    action = models.CharField(max_length=50, choices=ACTION_TYPES)
+    resource = models.CharField(max_length=100, help_text="Recurso accedido (ej: 'transactions', 'user_data')")
+    timestamp = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    details = models.JSONField(null=True, blank=True, help_text="Metadata no sensible sobre la acción")
+
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['user', 'timestamp']),
+            models.Index(fields=['action', 'timestamp']),
+        ]
+        verbose_name = "Registro de auditoría"
+        verbose_name_plural = "Registros de auditoría"
+
+    def __str__(self):
+        return f"[{self.timestamp}] {self.user} — {self.get_action_display()} → {self.resource}"
