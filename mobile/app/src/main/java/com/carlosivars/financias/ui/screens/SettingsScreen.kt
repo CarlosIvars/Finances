@@ -35,6 +35,9 @@ fun SettingsScreen(
     onExportBackup: suspend () -> String,
     onRestoreBackup: suspend (String) -> Result<Int>,
     onTestConnection: suspend (url: String, token: String) -> Pair<Boolean, String>,
+    onPerformSync: suspend () -> com.carlosivars.financias.sync.SyncResult = {
+        com.carlosivars.financias.sync.SyncResult(false, 0, 0, "No configurado")
+    },
     onClearAllData: suspend () -> Unit,
     onOpenNotificationSettings: () -> Unit
 ) {
@@ -50,8 +53,18 @@ fun SettingsScreen(
     var isBizumEnabled by remember { mutableStateOf(securePrefs.isBizumTrackerEnabled) }
     var isWalletEnabled by remember { mutableStateOf(securePrefs.isWalletTrackerEnabled) }
 
+    var isAiEnabled by remember { mutableStateOf(securePrefs.isAiCategorizationEnabled) }
+    var geminiKey by remember { mutableStateOf(securePrefs.geminiApiKey) }
+    var selectedModel by remember { mutableStateOf(securePrefs.geminiModel) }
+    var isGeminiKeyVisible by remember { mutableStateOf(false) }
+    var isTestingAi by remember { mutableStateOf(false) }
+    var aiTestResult by remember { mutableStateOf<String?>(null) }
+
     var isTestingConnection by remember { mutableStateOf(false) }
     var connectionTestResult by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
+
+    var isPerformingSync by remember { mutableStateOf(false) }
+    var syncResultMsg by remember { mutableStateOf<String?>(null) }
 
     var showExportDialog by remember { mutableStateOf(false) }
     var exportJsonContent by remember { mutableStateOf("") }
@@ -346,6 +359,271 @@ fun SettingsScreen(
                                     Text(
                                         text = message,
                                         color = if (success) IncomeGreen else ExpenseRed,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+
+                        Divider(color = CardBorder)
+
+                        // Última sincronización y botón de sincronizar ahora
+                        val lastSyncTime = securePrefs.lastSyncTimestamp
+                        val lastSyncStr = if (lastSyncTime > 0) {
+                            java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date(lastSyncTime))
+                        } else {
+                            "Nunca sincronizado"
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Última sincronización:", color = TextSecondary, fontSize = 12.sp)
+                            Text(lastSyncStr, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    isPerformingSync = true
+                                    syncResultMsg = null
+                                    val res = onPerformSync()
+                                    syncResultMsg = if (res.success) {
+                                        "✅ ${res.message}"
+                                    } else {
+                                        "❌ ${res.message}"
+                                    }
+                                    isPerformingSync = false
+                                }
+                            },
+                            enabled = !isPerformingSync && serverUrl.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = IncomeGreen),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            if (isPerformingSync) {
+                                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Sincronizando con la web...", fontSize = 13.sp)
+                            } else {
+                                Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Sincronizar Ahora con la Web", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+
+                        syncResultMsg?.let { msg ->
+                            val isSuccess = msg.startsWith("✅")
+                            Surface(
+                                color = if (isSuccess) IncomeGreen.copy(alpha = 0.15f) else ExpenseRed.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        if (isSuccess) Icons.Default.CheckCircle else Icons.Default.Error,
+                                        contentDescription = null,
+                                        tint = if (isSuccess) IncomeGreen else ExpenseRed,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        text = msg,
+                                        color = if (isSuccess) IncomeGreen else ExpenseRed,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // BLOQUE: Categorización Inteligente con IA
+            item {
+                Text(
+                    text = "🤖 Categorización Inteligente (Gemini IA)",
+                    color = TextPrimary,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = CardBackground),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Motor de IA para Categorías",
+                                    color = TextPrimary,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = if (isAiEnabled) "Clasificación avanzada con Gemini 2.0 Flash" else "Desactivado (solo palabras clave locales)",
+                                    color = if (isAiEnabled) PrimaryAccent else TextSecondary,
+                                    fontSize = 12.sp
+                                )
+                            }
+
+                            Switch(
+                                checked = isAiEnabled,
+                                onCheckedChange = {
+                                    isAiEnabled = it
+                                    securePrefs.isAiCategorizationEnabled = it
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = PrimaryAccent,
+                                    checkedTrackColor = PrimaryAccent.copy(alpha = 0.3f)
+                                )
+                            )
+                        }
+
+                        OutlinedTextField(
+                            value = geminiKey,
+                            onValueChange = {
+                                geminiKey = it
+                                securePrefs.geminiApiKey = it
+                                aiTestResult = null
+                            },
+                            label = { Text("Google Gemini API Key") },
+                            placeholder = { Text("AIzaSy...") },
+                            singleLine = true,
+                            visualTransformation = if (isGeminiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { isGeminiKeyVisible = !isGeminiKeyVisible }) {
+                                    Icon(
+                                        if (isGeminiKeyVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                        contentDescription = null,
+                                        tint = TextSecondary
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryAccent,
+                                focusedLabelColor = PrimaryAccent
+                            )
+                        )
+
+                        // Selector de Modelo Gemini
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "Modelo de Inteligencia Artificial:",
+                                color = TextSecondary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                val models = listOf(
+                                    "gemini-3.8-flash" to "3.8 Flash ⚡",
+                                    "gemini-3.5-flash-lite" to "3.5 Lite 🚀",
+                                    "gemini-3.1-pro-preview" to "3.1 Pro 🧠"
+                                )
+
+                                models.forEach { (id, label) ->
+                                    val isSelected = selectedModel == id
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = {
+                                            selectedModel = id
+                                            securePrefs.geminiModel = id
+                                            aiTestResult = null
+                                        },
+                                        label = {
+                                            Text(
+                                                text = label,
+                                                fontSize = 11.sp,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                            )
+                                        },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = PrimaryAccent.copy(alpha = 0.25f),
+                                            selectedLabelColor = PrimaryAccent
+                                        )
+                                    )
+                                }
+                            }
+                        }
+
+                        // Botón probar IA
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    isTestingAi = true
+                                    aiTestResult = null
+                                    val (success, detailMsg) = com.carlosivars.financias.notification.AICategorizer.testCategorization(
+                                        merchantOrConcept = "Leroy Merlin Bricolaje",
+                                        apiKey = geminiKey.trim(),
+                                        model = selectedModel
+                                    )
+                                    aiTestResult = if (success) {
+                                        "✅ $detailMsg"
+                                    } else {
+                                        "❌ $detailMsg"
+                                    }
+                                    isTestingAi = false
+                                }
+                            },
+                            enabled = !isTestingAi && geminiKey.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            if (isTestingAi) {
+                                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Consultando Gemini...", fontSize = 13.sp)
+                            } else {
+                                Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Probar Clasificación IA", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+
+                        aiTestResult?.let { msg ->
+                            val isSuccess = msg.startsWith("✅")
+                            Surface(
+                                color = if (isSuccess) IncomeGreen.copy(alpha = 0.15f) else ExpenseRed.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        if (isSuccess) Icons.Default.CheckCircle else Icons.Default.Error,
+                                        contentDescription = null,
+                                        tint = if (isSuccess) IncomeGreen else ExpenseRed,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        text = msg,
+                                        color = if (isSuccess) IncomeGreen else ExpenseRed,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium
                                     )

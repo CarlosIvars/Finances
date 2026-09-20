@@ -91,16 +91,70 @@ class BankingNotificationListener : NotificationListenerService() {
             return
         }
 
+        // 2.1 Verificar toggles por entidad en ajustes seguros
+        val prefs = repository.securePrefs
+        val isSabadellPkg = packageName == "net.inverline.bancosabadell.officelocator.android"
+        val isWalletPkg = packageName == "com.google.android.apps.walletnfcrel" || packageName == "com.google.android.gms"
+
+        if (isSabadellPkg && !prefs.isSabadellTrackerEnabled) {
+            Log.d(TAG, "Notificación de Sabadell ignorada porque el rastreador está desactivado en ajustes.")
+            return
+        }
+        if (isWalletPkg && !prefs.isWalletTrackerEnabled) {
+            Log.d(TAG, "Notificación de Wallet ignorada porque el rastreador está desactivado en ajustes.")
+            return
+        }
+
         // 3. Parsear y persistir en Room SQLite
         val parsedTransaction = NotificationParser.parse(packageName, title, text, sbn.postTime)
         if (parsedTransaction != null) {
+            // Verificar si es un Bizum y el rastreador de Bizum está desactivado
+            val isBizum = title.contains("bizum", ignoreCase = true) ||
+                    text.contains("bizum", ignoreCase = true) ||
+                    parsedTransaction.category.contains("bizum", ignoreCase = true)
+
+            if (isBizum && !prefs.isBizumTrackerEnabled) {
+                Log.d(TAG, "Bizum ignorado porque el rastreador de Bizum está desactivado en ajustes.")
+                return
+            }
+
             val hash = calculateHash("$packageName|${sbn.id}|${sbn.postTime}|$title|$text")
             serviceScope.launch {
-                val inserted = repository.saveTransaction(parsedTransaction, hash)
-                if (inserted) {
-                    Log.i(TAG, "Movimiento guardado con éxito: ${parsedTransaction.description} (${parsedTransaction.amount} ${parsedTransaction.currency})")
+                // Comprobar si la IA puede afinar la categoría si vino como "Otros"
+                val finalTransaction = if (parsedTransaction.category == "Otros" && prefs.isAiCategorizationEnabled) {
+                    val aiCat = CategoryClassifier.classifyWithAi(
+                        merchantOrText = parsedTransaction.description,
+                        amount = parsedTransaction.amount,
+                        isIncome = parsedTransaction.type == com.carlosivars.financias.model.TransactionType.INCOME,
+                        prefs = prefs
+                    )
+                    parsedTransaction.copy(category = aiCat)
                 } else {
-                    Log.d(TAG, "Movimiento duplicado ignorado: $hash")
+                    parsedTransaction
+                }
+
+                // Comprobación de deduplicación cross-source (ej. Google Wallet + Banco Sabadell)
+                val recentTransactions = repository.getRecentTransactions(TransactionDeduplicator.DEDUP_WINDOW_MS * 2)
+                val dedupResult = TransactionDeduplicator.checkDuplicate(finalTransaction, recentTransactions)
+
+                when (dedupResult) {
+                    is DeduplicationResult.DuplicateOf -> {
+                        Log.w(
+                            TAG,
+                            "⚠️ Transacción duplicada cross-source ignorada: ${dedupResult.reason} (existente: ${dedupResult.existingTransactionId})"
+                        )
+                    }
+                    is DeduplicationResult.Unique -> {
+                        val inserted = repository.saveTransaction(finalTransaction, hash)
+                        if (inserted) {
+                            Log.i(
+                                TAG,
+                                "Movimiento guardado con éxito: ${finalTransaction.description} (${finalTransaction.amount} ${finalTransaction.currency}) [${finalTransaction.category}]"
+                            )
+                        } else {
+                            Log.d(TAG, "Movimiento duplicado ignorado por hash exacto: $hash")
+                        }
+                    }
                 }
             }
         }

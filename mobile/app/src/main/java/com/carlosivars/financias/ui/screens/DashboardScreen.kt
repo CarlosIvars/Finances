@@ -29,7 +29,6 @@ fun DashboardScreen(
     isTrackerActive: Boolean,
     onNavigateToTransactions: () -> Unit,
     onOpenAddTransaction: (TransactionType) -> Unit,
-    onTriggerTestBizum: () -> Unit
     onTriggerTestBizum: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
@@ -53,7 +52,6 @@ fun DashboardScreen(
         contentPadding = PaddingValues(top = 20.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // 1. Header con estado
         // 1. Header con estado y ajustes
         item {
             Row(
@@ -79,12 +77,6 @@ fun DashboardScreen(
                     )
                 }
 
-                Surface(
-                    color = if (isTrackerActive) IncomeGreen.copy(alpha = 0.15f) else ExpenseRed.copy(alpha = 0.15f),
-                    shape = RoundedCornerShape(16.dp),
-                    border = CardDefaults.outlinedCardBorder().copy(
-                        brush = androidx.compose.ui.graphics.SolidColor(
-                            if (isTrackerActive) IncomeGreen.copy(alpha = 0.4f) else ExpenseRed.copy(alpha = 0.4f)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -97,20 +89,7 @@ fun DashboardScreen(
                                 if (isTrackerActive) IncomeGreen.copy(alpha = 0.4f) else ExpenseRed.copy(alpha = 0.4f)
                             )
                         )
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(
-                                    color = if (isTrackerActive) IncomeGreen else ExpenseRed,
-                                    shape = CircleShape
-                                )
                         Row(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -141,12 +120,6 @@ fun DashboardScreen(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Ajustes",
                             tint = TextSecondary
-                        )
-                        Text(
-                            text = if (isTrackerActive) "Rastreo activo" else "Rastreo inactivo",
-                            color = if (isTrackerActive) IncomeGreen else ExpenseRed,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }

@@ -1,6 +1,7 @@
 package com.carlosivars.financias.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,12 +29,14 @@ import java.util.Locale
 fun TransactionsScreen(
     transactions: List<Transaction>,
     onAddTransactionClick: () -> Unit,
-    onDeleteTransaction: (String) -> Unit
+    onDeleteTransaction: (String) -> Unit,
+    onRecategorizeTransaction: (transactionId: String, newCategory: String) -> Unit = { _, _ -> }
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedTypeFilter by remember { mutableStateOf<TransactionType?>(null) }
     var selectedCategoryFilter by remember { mutableStateOf<String?>(null) }
     var transactionToDelete by remember { mutableStateOf<Transaction?>(null) }
+    var transactionToRecategorize by remember { mutableStateOf<Transaction?>(null) }
 
     val filteredTransactions = remember(transactions, searchQuery, selectedTypeFilter, selectedCategoryFilter) {
         transactions.filter { tx ->
@@ -238,11 +241,25 @@ fun TransactionsScreen(
                 items(filteredTransactions, key = { it.id }) { tx ->
                     SwipeableTransactionItem(
                         tx = tx,
-                        onDeleteClick = { transactionToDelete = tx }
+                        onDeleteClick = { transactionToDelete = tx },
+                        onClick = { transactionToRecategorize = tx }
                     )
                 }
             }
         }
+    }
+
+    // Diálogo para recategorizar movimiento
+    transactionToRecategorize?.let { tx ->
+        com.carlosivars.financias.ui.components.RecategorizeDialog(
+            currentCategory = tx.category,
+            transactionDescription = tx.description,
+            onCategorySelected = { newCat ->
+                onRecategorizeTransaction(tx.id, newCat)
+                transactionToRecategorize = null
+            },
+            onDismiss = { transactionToRecategorize = null }
+        )
     }
 
     // Diálogo de confirmación de borrado
@@ -281,7 +298,8 @@ fun TransactionsScreen(
 @Composable
 fun SwipeableTransactionItem(
     tx: Transaction,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    onClick: () -> Unit = {}
 ) {
     val isIncome = tx.type == TransactionType.INCOME
     val amountColor = if (isIncome) IncomeGreen else ExpenseRed
@@ -295,7 +313,9 @@ fun SwipeableTransactionItem(
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = CardBackground),
         shape = RoundedCornerShape(16.dp)
     ) {

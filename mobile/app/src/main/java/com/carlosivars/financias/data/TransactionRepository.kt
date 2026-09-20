@@ -25,6 +25,11 @@ class TransactionRepository(context: Context) {
     private val transactionDao = db.transactionDao()
     private val budgetDao = db.budgetDao()
     val securePrefs = SecurePreferencesManager(context)
+    val syncManager = com.carlosivars.financias.sync.SyncManager(context)
+
+    suspend fun getPendingSyncCount(): Int = syncManager.countPendingSync()
+
+    suspend fun performSync(): com.carlosivars.financias.sync.SyncResult = syncManager.performFullSync()
 
     val allTransactions: Flow<List<Transaction>> = transactionDao.getAllTransactions().map { entities ->
         entities.map { it.toDomain() }
@@ -36,6 +41,11 @@ class TransactionRepository(context: Context) {
         val entity = TransactionEntity.fromDomain(transaction, notificationHash)
         val rowId = transactionDao.insertTransaction(entity)
         return rowId != -1L
+    }
+
+    suspend fun getRecentTransactions(windowMs: Long = 120_000L): List<Transaction> = withContext(Dispatchers.IO) {
+        val since = System.currentTimeMillis() - windowMs
+        transactionDao.getTransactionsSince(since).map { it.toDomain() }
     }
 
     suspend fun addManualTransaction(
@@ -74,16 +84,6 @@ class TransactionRepository(context: Context) {
     }
 
     suspend fun initDefaultBudgetsIfEmpty() {
-        // Inicializa presupuestos sugeridos iniciales
-        val defaults = listOf(
-            BudgetEntity("food", "Alimentación", 350.0, "#10B981"),
-            BudgetEntity("leisure", "Ocio & Restauración", 150.0, "#F59E0B"),
-            BudgetEntity("transport", "Transporte", 100.0, "#3B82F6"),
-            BudgetEntity("housing", "Hogar & Servicios", 200.0, "#8B5CF6"),
-            BudgetEntity("subscriptions", "Suscripciones", 40.0, "#6366F1")
-        )
-        for (b in defaults) {
-            budgetDao.setBudget(b)
         val current = budgetDao.getAllBudgets().first()
         if (current.isEmpty()) {
             val defaults = listOf(
@@ -97,6 +97,11 @@ class TransactionRepository(context: Context) {
                 budgetDao.setBudget(b)
             }
         }
+    }
+
+    suspend fun updateCategory(id: String, newCategory: String): Boolean = withContext(Dispatchers.IO) {
+        val rows = transactionDao.updateCategory(id, newCategory)
+        rows > 0
     }
 
     suspend fun deleteTransaction(id: String) {

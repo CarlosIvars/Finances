@@ -65,6 +65,40 @@ object CategoryClassifier {
         return "Otros"
     }
 
+    /**
+     * Clasifica un movimiento usando primero reglas de palabras clave y,
+     * si no hay coincidencia directa y la IA está activada, consulta a Gemini.
+     */
+    suspend fun classifyWithAi(
+        merchantOrText: String,
+        amount: Double,
+        isIncome: Boolean,
+        prefs: com.carlosivars.financias.data.SecurePreferencesManager
+    ): String {
+        val keywordResult = classify(merchantOrText, isIncome)
+
+        // Si las palabras clave ya dieron una categoría concreta (no "Otros"), la usamos directamente
+        if (keywordResult != "Otros") {
+            return keywordResult
+        }
+
+        // Si el usuario activó la IA y tiene su API Key configurada, consultamos a Gemini
+        if (prefs.isAiCategorizationEnabled && prefs.geminiApiKey.isNotBlank()) {
+            val aiResult = AICategorizer.categorizeWithGemini(
+                merchantOrConcept = merchantOrText,
+                amount = amount,
+                isIncome = isIncome,
+                apiKey = prefs.geminiApiKey,
+                model = prefs.geminiModel
+            )
+            if (aiResult != null) {
+                return aiResult
+            }
+        }
+
+        return "Otros"
+    }
+
     private fun matchesAny(text: String, keywords: List<String>): Boolean {
         return keywords.any { text.contains(it) }
     }

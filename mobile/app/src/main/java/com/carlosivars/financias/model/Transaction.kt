@@ -21,6 +21,8 @@ data class Transaction(
     val date: String,
     val timestamp: Long,
     val source: TransactionSource,
-    val rawNotificationText: String? = null
+    val rawNotificationText: String? = null,
+    val pendingSync: Boolean = false,
+    val serverId: Int? = null
 )
 

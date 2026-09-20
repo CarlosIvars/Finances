@@ -75,23 +75,6 @@ class MainActivity : ComponentActivity() {
 
                 val coroutineScope = rememberCoroutineScope()
 
-                Scaffold(
-                    containerColor = DarkBackground,
-                    bottomBar = {
-                        NavigationBar(
-                            containerColor = CardBackground,
-                            tonalElevation = 8.dp
-                        ) {
-                            FinancIAsTab.values().forEach { tab ->
-                                val isSelected = selectedTab == tab
-                                NavigationBarItem(
-                                    selected = isSelected,
-                                    onClick = { selectedTab = tab },
-                                    icon = {
-                                        Icon(
-                                            imageVector = tab.icon,
-                                            contentDescription = tab.title,
-                                            tint = if (isSelected) PrimaryAccent else TextSecondary
                 if (isInSettings) {
                     SettingsScreen(
                         securePrefs = repository.securePrefs,
@@ -100,6 +83,7 @@ class MainActivity : ComponentActivity() {
                         onExportBackup = { repository.exportBackupJson() },
                         onRestoreBackup = { json -> repository.restoreBackupJson(json) },
                         onTestConnection = { url, token -> repository.testCloudConnection(url, token) },
+                        onPerformSync = { repository.performSync() },
                         onClearAllData = { repository.clearAll() },
                         onOpenNotificationSettings = {
                             NotificationUtils.openNotificationListenerSettings(this@MainActivity)
@@ -135,44 +119,10 @@ class MainActivity : ComponentActivity() {
                                         colors = NavigationBarItemDefaults.colors(
                                             indicatorColor = PrimaryAccent.copy(alpha = 0.15f)
                                         )
-                                    },
-                                    label = {
-                                        Text(
-                                            text = tab.title,
-                                            color = if (isSelected) PrimaryAccent else TextSecondary,
-                                            fontSize = 11.sp
-                                        )
-                                    },
-                                    colors = NavigationBarItemDefaults.colors(
-                                        indicatorColor = PrimaryAccent.copy(alpha = 0.15f)
                                     )
-                                )
                                 }
                             }
                         }
-                    }
-                ) { innerPadding ->
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(bottom = innerPadding.calculateBottomPadding()),
-                        color = DarkBackground
-                    ) {
-                        when (selectedTab) {
-                            FinancIAsTab.DASHBOARD -> {
-                                DashboardScreen(
-                                    transactions = transactions,
-                                    isTrackerActive = isPermissionGranted,
-                                    onNavigateToTransactions = { selectedTab = FinancIAsTab.TRANSACTIONS },
-                                    onOpenAddTransaction = { type ->
-                                        addTransactionInitialType = type
-                                        showAddTransactionDialog = true
-                                    },
-                                    onTriggerTestBizum = {
-                                        TestNotificationHelper.sendFakeSabadellBizumReceived(this@MainActivity, 10.0, "Carlos")
-                                    }
-                                )
-                            }
                     ) { innerPadding ->
                         Surface(
                             modifier = Modifier
@@ -197,16 +147,6 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
 
-                            FinancIAsTab.TRANSACTIONS -> {
-                                TransactionsScreen(
-                                    transactions = transactions,
-                                    onAddTransactionClick = {
-                                        addTransactionInitialType = TransactionType.EXPENSE
-                                        showAddTransactionDialog = true
-                                    },
-                                    onDeleteTransaction = { txId ->
-                                        coroutineScope.launch {
-                                            repository.deleteTransaction(txId)
                                 FinancIAsTab.TRANSACTIONS -> {
                                     TransactionsScreen(
                                         transactions = transactions,
@@ -218,31 +158,21 @@ class MainActivity : ComponentActivity() {
                                             coroutineScope.launch {
                                                 repository.deleteTransaction(txId)
                                             }
+                                        },
+                                        onRecategorizeTransaction = { txId, newCategory ->
+                                            coroutineScope.launch {
+                                                repository.updateCategory(txId, newCategory)
+                                            }
                                         }
-                                    }
-                                )
-                            }
                                     )
                                 }
 
-                            FinancIAsTab.ANALYTICS -> {
-                                AnalyticsScreen(
-                                    transactions = transactions
-                                )
-                            }
                                 FinancIAsTab.ANALYTICS -> {
                                     AnalyticsScreen(
                                         transactions = transactions
                                     )
                                 }
 
-                            FinancIAsTab.BUDGETS -> {
-                                BudgetScreen(
-                                    budgets = budgets,
-                                    transactions = transactions,
-                                    onSaveBudget = { catId, catName, limit, colorHex ->
-                                        coroutineScope.launch {
-                                            repository.setBudget(catId, catName, limit, colorHex)
                                 FinancIAsTab.BUDGETS -> {
                                     BudgetScreen(
                                         budgets = budgets,
@@ -252,28 +182,9 @@ class MainActivity : ComponentActivity() {
                                                 repository.setBudget(catId, catName, limit, colorHex)
                                             }
                                         }
-                                    }
-                                )
-                            }
                                     )
                                 }
 
-                            FinancIAsTab.BANKING -> {
-                                BankingHubScreen(
-                                    isTrackerActive = isPermissionGranted,
-                                    onOpenSettings = {
-                                        NotificationUtils.openNotificationListenerSettings(this@MainActivity)
-                                    },
-                                    onTriggerTestBizum = {
-                                        TestNotificationHelper.sendFakeSabadellBizumReceived(this@MainActivity, 10.0, "Carlos")
-                                    },
-                                    onTriggerTestSabadellCard = {
-                                        TestNotificationHelper.sendFakeSabadellCardPayment(this@MainActivity, 34.0, "Mercadona")
-                                    },
-                                    onTriggerTestWallet = {
-                                        TestNotificationHelper.sendFakeWalletNotification(this@MainActivity, 45.0, "Repsol")
-                                    }
-                                )
                                 FinancIAsTab.BANKING -> {
                                     BankingHubScreen(
                                         isTrackerActive = isPermissionGranted,

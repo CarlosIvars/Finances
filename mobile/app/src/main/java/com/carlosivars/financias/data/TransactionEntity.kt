@@ -24,7 +24,9 @@ data class TransactionEntity(
     val timestamp: Long,
     val source: String,
     val notificationHash: String,
-    val rawText: String?
+    val rawText: String?,
+    val pendingSync: Boolean = true,
+    val serverId: Int? = null
 ) {
     fun toDomain(): Transaction {
         return Transaction(
@@ -37,7 +39,9 @@ data class TransactionEntity(
             date = date,
             timestamp = timestamp,
             source = TransactionSource.valueOf(source),
-            rawNotificationText = rawText
+            rawNotificationText = rawText,
+            pendingSync = pendingSync,
+            serverId = serverId
         )
     }
 
@@ -54,7 +58,9 @@ data class TransactionEntity(
                 timestamp = domain.timestamp,
                 source = domain.source.name,
                 notificationHash = notificationHash,
-                rawText = domain.rawNotificationText
+                rawText = domain.rawNotificationText,
+                pendingSync = domain.pendingSync,
+                serverId = domain.serverId
             )
         }
     }
