@@ -102,6 +102,7 @@ fun RecategorizeDialog(
                                 ) {
                                     CategoryIcon(
                                         categoryIdOrName = rootCat.id,
+                                        iconName = rootCat.icon,
                                         colorHex = rootCat.colorHex,
                                         size = 32.dp,
                                         iconSize = 16.dp,
@@ -180,11 +181,13 @@ fun RecategorizeDialog(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        Icon(
-                                            Icons.Default.SubdirectoryArrowRight,
-                                            contentDescription = null,
-                                            tint = catColor,
-                                            modifier = Modifier.size(14.dp)
+                                        CategoryIcon(
+                                            categoryIdOrName = sub.id,
+                                            iconName = sub.icon,
+                                            colorHex = sub.colorHex,
+                                            size = 24.dp,
+                                            iconSize = 13.dp,
+                                            shapeRadius = 6.dp
                                         )
                                         Text(
                                             text = sub.name,

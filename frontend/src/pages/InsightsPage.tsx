@@ -3,6 +3,7 @@ import { Card } from '../components/ui/Card';
 import { Sparkles, Loader2, ChevronDown, ChevronUp, ExternalLink, Trash2 } from 'lucide-react';
 import { getAlerts, generateInsights, markAlertRead, dismissAlert, getTransactions } from '../services/api';
 import type { Alert } from '../services/api';
+import { CategoryBadge } from '../components/CategoryBadge';
 
 interface InsightsPageProps {
     onNavigateToTransactions?: (filter: { categoryId?: number; transactionIds?: number[] }) => void;
@@ -236,17 +237,37 @@ export function InsightsPage({ onNavigateToTransactions }: InsightsPageProps) {
                                                     {relatedTx.map(tx => (
                                                         <div
                                                             key={tx.id}
-                                                            className="flex items-center justify-between p-3 bg-background border border-border shadow-sm rounded-lg hover:bg-accent transition-all"
+                                                            className="flex items-center justify-between p-3 bg-background border border-border shadow-sm rounded-xl hover:bg-accent transition-all gap-3"
                                                         >
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="text-sm font-medium text-foreground truncate">
-                                                                    {tx.description}
-                                                                </p>
-                                                                <p className="text-xs text-muted-foreground mt-0.5">
-                                                                    {formatDate(tx.date)} • {tx.category_name || 'Sin categoría'}
-                                                                </p>
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                <CategoryBadge
+                                                                    categoryName={tx.category_name}
+                                                                    parentCategoryName={tx.parent_category_name}
+                                                                    categoryColor={tx.category_color}
+                                                                    categoryIcon={tx.category_icon}
+                                                                    categoryId={tx.category}
+                                                                    variant="icon-only"
+                                                                    size="sm"
+                                                                />
+                                                                <div className="min-w-0">
+                                                                    <p className="text-sm font-medium text-foreground truncate">
+                                                                        {tx.description}
+                                                                    </p>
+                                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                                        <span className="text-xs text-muted-foreground">{formatDate(tx.date)}</span>
+                                                                        <span className="text-xs text-muted-foreground">•</span>
+                                                                        <CategoryBadge
+                                                                            categoryName={tx.category_name}
+                                                                            parentCategoryName={tx.parent_category_name}
+                                                                            categoryColor={tx.category_color}
+                                                                            categoryIcon={tx.category_icon}
+                                                                            categoryId={tx.category}
+                                                                            size="xs"
+                                                                        />
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                            <span className={`font-semibold ml-3 ${tx.amount < 0 ? 'text-destructive' : 'text-emerald-500'}`}>
+                                                            <span className={`font-semibold ml-3 whitespace-nowrap ${tx.amount < 0 ? 'text-destructive' : 'text-emerald-500'}`}>
                                                                 {formatAmount(parseFloat(tx.amount))}
                                                             </span>
                                                         </div>

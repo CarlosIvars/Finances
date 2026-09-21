@@ -193,7 +193,9 @@ fun BudgetScreen(
 
                             CategoryIcon(
                                 categoryIdOrName = cat.id,
+                                iconName = cat.icon,
                                 colorHex = cat.colorHex,
+                                categories = categories,
                                 size = 36.dp,
                                 iconSize = 18.dp,
                                 shapeRadius = 10.dp

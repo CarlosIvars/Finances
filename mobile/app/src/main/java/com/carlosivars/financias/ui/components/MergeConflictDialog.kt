@@ -16,11 +16,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.carlosivars.financias.model.Category
 import com.carlosivars.financias.sync.MobileSyncConflict
 
 @Composable
 fun MergeConflictDialog(
     conflict: MobileSyncConflict,
+    categories: List<Category>? = null,
     onResolve: (keepLocal: Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -116,12 +118,32 @@ fun MergeConflictDialog(
                             fontWeight = if (amountDiff) FontWeight.Bold else FontWeight.Normal,
                             color = if (amountDiff) Color(0xFFF59E0B) else MaterialTheme.colorScheme.onSurface
                         )
-                        Text(
-                            text = "Categoría: ${local.category}",
-                            fontSize = 13.sp,
-                            fontWeight = if (catDiff) FontWeight.Bold else FontWeight.Normal,
-                            color = if (catDiff) Color(0xFFF59E0B) else MaterialTheme.colorScheme.onSurface
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "Categoría:",
+                                fontSize = 13.sp,
+                                fontWeight = if (catDiff) FontWeight.Bold else FontWeight.Normal,
+                                color = if (catDiff) Color(0xFFF59E0B) else MaterialTheme.colorScheme.onSurface
+                            )
+                            val localCat = Category.findByName(local.category, categories)
+                            CategoryIcon(
+                                categoryIdOrName = localCat.id,
+                                iconName = localCat.icon,
+                                colorHex = localCat.colorHex,
+                                size = 24.dp,
+                                iconSize = 13.dp,
+                                shapeRadius = 6.dp
+                            )
+                            Text(
+                                text = local.category,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = try { Color(android.graphics.Color.parseColor(localCat.colorHex)) } catch (_: Exception) { MaterialTheme.colorScheme.primary }
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(
@@ -175,12 +197,32 @@ fun MergeConflictDialog(
                             fontWeight = if (amountDiff) FontWeight.Bold else FontWeight.Normal,
                             color = if (amountDiff) Color(0xFFF59E0B) else MaterialTheme.colorScheme.onSurface
                         )
-                        Text(
-                            text = "Categoría: ${conflict.serverCategoryName}",
-                            fontSize = 13.sp,
-                            fontWeight = if (catDiff) FontWeight.Bold else FontWeight.Normal,
-                            color = if (catDiff) Color(0xFFF59E0B) else MaterialTheme.colorScheme.onSurface
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "Categoría:",
+                                fontSize = 13.sp,
+                                fontWeight = if (catDiff) FontWeight.Bold else FontWeight.Normal,
+                                color = if (catDiff) Color(0xFFF59E0B) else MaterialTheme.colorScheme.onSurface
+                            )
+                            val serverCat = Category.findByName(conflict.serverCategoryName, categories)
+                            CategoryIcon(
+                                categoryIdOrName = serverCat.id,
+                                iconName = serverCat.icon,
+                                colorHex = serverCat.colorHex,
+                                size = 24.dp,
+                                iconSize = 13.dp,
+                                shapeRadius = 6.dp
+                            )
+                            Text(
+                                text = conflict.serverCategoryName,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = try { Color(android.graphics.Color.parseColor(serverCat.colorHex)) } catch (_: Exception) { MaterialTheme.colorScheme.primary }
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(

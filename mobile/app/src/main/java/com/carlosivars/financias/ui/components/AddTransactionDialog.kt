@@ -147,13 +147,13 @@ fun AddTransactionDialog(
                         label = { Text("Categoría") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCategoryDropdownOpen) },
                         leadingIcon = {
-                            Box(
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .background(
-                                        color = try { Color(android.graphics.Color.parseColor(selectedCategory.colorHex)) } catch (_: Exception) { MaterialTheme.colorScheme.primary },
-                                        shape = CircleShape
-                                    )
+                            CategoryIcon(
+                                categoryIdOrName = selectedCategory.id,
+                                iconName = selectedCategory.icon,
+                                colorHex = selectedCategory.colorHex,
+                                size = 26.dp,
+                                iconSize = 14.dp,
+                                shapeRadius = 6.dp
                             )
                         },
                         modifier = Modifier
@@ -178,13 +178,13 @@ fun AddTransactionDialog(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(14.dp)
-                                                .background(
-                                                color = try { Color(android.graphics.Color.parseColor(cat.colorHex)) } catch (_: Exception) { MaterialTheme.colorScheme.primary },
-                                                shape = CircleShape
-                                            )
+                                        CategoryIcon(
+                                            categoryIdOrName = cat.id,
+                                            iconName = cat.icon,
+                                            colorHex = cat.colorHex,
+                                            size = 26.dp,
+                                            iconSize = 14.dp,
+                                            shapeRadius = 6.dp
                                         )
                                         Text(cat.name, fontSize = 14.sp)
                                     }

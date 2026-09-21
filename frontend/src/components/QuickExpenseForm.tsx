@@ -3,11 +3,13 @@ import { Plus, X, Save, Loader2, Wifi, WifiOff, Cloud, CloudOff } from 'lucide-r
 import { addPendingTransaction, getPendingTransactions } from '../services/offlineStore';
 import { getOfflineCategories, syncPendingTransactions } from '../services/syncService';
 import { useOnlineStatus, useSyncStatus } from '../hooks/useOnlineStatus';
+import { CategoryBadge } from './CategoryBadge';
 
 interface Category {
     id: number;
     name: string;
     color: string;
+    icon?: string;
     is_income: boolean;
 }
 
@@ -183,9 +185,13 @@ export function QuickExpenseForm({ onTransactionAdded }: QuickExpenseFormProps) 
                                                     : 'bg-secondary/60 hover:bg-secondary border-border/60 text-muted-foreground hover:text-foreground'
                                                 }`}
                                         >
-                                            <div
-                                                className="w-7 h-7 rounded-full mx-auto mb-1.5 shadow-sm"
-                                                style={{ backgroundColor: cat.color }}
+                                            <CategoryBadge
+                                                categoryName={cat.name}
+                                                categoryColor={cat.color}
+                                                categoryIcon={cat.icon}
+                                                variant="icon-only"
+                                                size="md"
+                                                className="mx-auto mb-1.5"
                                             />
                                             <span className="truncate block">{cat.name}</span>
                                         </button>

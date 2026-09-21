@@ -34,13 +34,15 @@ class AccountSerializer(serializers.ModelSerializer):
 class TransactionSerializer(serializers.ModelSerializer):
     category_name = serializers.ReadOnlyField(source='category.name')
     parent_category_name = serializers.ReadOnlyField(source='category.parent.name')
+    category_color = serializers.ReadOnlyField(source='category.color')
+    category_icon = serializers.ReadOnlyField(source='category.icon')
     account_name = serializers.ReadOnlyField(source='account.name')
 
     class Meta:
         model = Transaction
         fields = [
             'id', 'date', 'description', 'amount', 'type',
-            'category', 'category_name', 'parent_category_name', 'account', 'account_name',
+            'category', 'category_name', 'parent_category_name', 'category_color', 'category_icon', 'account', 'account_name',
             'raw_data', 'metadata', 'is_pending', 'import_batch', 'created_at'
         ]
         read_only_fields = ['user', 'created_at']
@@ -90,10 +92,11 @@ class AlertSerializer(serializers.ModelSerializer):
 class BudgetSerializer(serializers.ModelSerializer):
     category_name = serializers.ReadOnlyField(source='category.name')
     category_color = serializers.ReadOnlyField(source='category.color')
+    category_icon = serializers.ReadOnlyField(source='category.icon')
     
     class Meta:
         model = Budget
-        fields = ['id', 'category', 'category_name', 'category_color', 'amount', 'month', 'created_at', 'updated_at']
+        fields = ['id', 'category', 'category_name', 'category_color', 'category_icon', 'amount', 'month', 'created_at', 'updated_at']
         read_only_fields = ['user', 'created_at', 'updated_at']
 
 
@@ -102,12 +105,13 @@ class SyncTransactionSerializer(serializers.ModelSerializer):
     category_name = serializers.ReadOnlyField(source='category.name')
     parent_category_name = serializers.ReadOnlyField(source='category.parent.name')
     category_color = serializers.ReadOnlyField(source='category.color')
+    category_icon = serializers.ReadOnlyField(source='category.icon')
     
     class Meta:
         model = Transaction
         fields = [
             'id', 'date', 'description', 'amount', 'type',
-            'category', 'category_name', 'parent_category_name', 'category_color',
+            'category', 'category_name', 'parent_category_name', 'category_color', 'category_icon',
             'raw_data', 'metadata', 'is_pending', 'created_at'
         ]
 
@@ -174,23 +178,21 @@ class RegisterSerializer(serializers.Serializer):
             granted=True,
         )
 
-        # Create default categories for the new user
+        # Create default categories for the new user with representative icons
         default_categories = [
-            {'name': 'Alimentación', 'color': '#ef4444', 'icon': 'shopping_cart', 'is_income': False},
-            {'name': 'Transporte', 'color': '#f97316', 'is_income': False},
-            {'name': 'Hogar', 'color': '#eab308', 'is_income': False},
-            {'name': 'Ocio', 'color': '#22c55e', 'is_income': False},
-            {'name': 'Salud', 'color': '#06b6d4', 'is_income': False},
-            {'name': 'Educación', 'color': '#8b5cf6', 'is_income': False},
-            {'name': 'Ropa', 'color': '#ec4899', 'is_income': False},
-            {'name': 'Suscripciones', 'color': '#6366f1', 'is_income': False},
-            {'name': 'Otros gastos', 'color': '#64748b', 'is_income': False},
-            {'name': 'Nómina', 'color': '#10b981', 'is_income': True},
-            {'name': 'Otros ingresos', 'color': '#34d399', 'is_income': True},
+            {'name': 'Alimentación', 'color': '#ef4444', 'icon': 'restaurant', 'is_income': False},
+            {'name': 'Transporte', 'color': '#f97316', 'icon': 'directions_car', 'is_income': False},
+            {'name': 'Hogar', 'color': '#eab308', 'icon': 'home', 'is_income': False},
+            {'name': 'Ocio', 'color': '#22c55e', 'icon': 'sports_esports', 'is_income': False},
+            {'name': 'Salud', 'color': '#06b6d4', 'icon': 'local_hospital', 'is_income': False},
+            {'name': 'Educación', 'color': '#8b5cf6', 'icon': 'school', 'is_income': False},
+            {'name': 'Ropa', 'color': '#ec4899', 'icon': 'checkroom', 'is_income': False},
+            {'name': 'Suscripciones', 'color': '#6366f1', 'icon': 'subscriptions', 'is_income': False},
+            {'name': 'Otros gastos', 'color': '#64748b', 'icon': 'receipt', 'is_income': False},
+            {'name': 'Nómina', 'color': '#10b981', 'icon': 'work', 'is_income': True},
+            {'name': 'Otros ingresos', 'color': '#34d399', 'icon': 'savings', 'is_income': True},
         ]
         for cat in default_categories:
             Category.objects.create(user=user, **cat)
 
         return user
-
-

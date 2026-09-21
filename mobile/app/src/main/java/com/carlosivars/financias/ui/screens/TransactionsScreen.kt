@@ -245,6 +245,7 @@ fun TransactionsScreen(
                 items(filteredTransactions, key = { it.id }) { tx ->
                     SwipeableTransactionItem(
                         tx = tx,
+                        categories = categories,
                         onDeleteClick = { transactionToDelete = tx },
                         onClick = { transactionForDetail = tx }
                     )
@@ -257,6 +258,7 @@ fun TransactionsScreen(
     transactionForDetail?.let { tx ->
         com.carlosivars.financias.ui.components.TransactionDetailDialog(
             transaction = tx,
+            categories = categories,
             onDismiss = { transactionForDetail = null },
             onRecategorizeClick = {
                 val target = transactionForDetail
@@ -322,6 +324,7 @@ fun TransactionsScreen(
 @Composable
 fun SwipeableTransactionItem(
     tx: Transaction,
+    categories: List<Category> = emptyList(),
     onDeleteClick: () -> Unit,
     onClick: () -> Unit = {}
 ) {
@@ -329,7 +332,7 @@ fun SwipeableTransactionItem(
     val amountColor = if (isIncome) IncomeGreen else ExpenseRed
     val prefix = if (isIncome) "+" else "-"
 
-    val category = Category.findByName(tx.category)
+    val category = Category.findByName(tx.category, categories)
     val catColor = try {
         Color(android.graphics.Color.parseColor(category.colorHex))
     } catch (_: Exception) {
@@ -356,9 +359,10 @@ fun SwipeableTransactionItem(
                 modifier = Modifier.weight(1f)
             ) {
                 CategoryIcon(
-                    categoryIdOrName = if (isIncome) "salary" else category.id,
-                    iconName = if (isIncome) "payments" else category.icon,
-                    colorHex = if (isIncome) "#10B981" else category.colorHex,
+                    categoryIdOrName = category.id,
+                    iconName = category.icon,
+                    colorHex = category.colorHex,
+                    categories = categories,
                     size = 44.dp,
                     iconSize = 22.dp,
                     shapeRadius = 12.dp

@@ -19,16 +19,20 @@ import com.carlosivars.financias.model.Category
 
 /**
  * Retorna el ImageVector correspondiente a una categoría de gasto/ingreso,
- * evitando el uso de emojis para mantener una interfaz fintech sobria y profesional.
+ * garantizando la máxima consistencia visual fintech en toda la aplicación.
  */
 fun getCategoryVectorIcon(categoryIdOrName: String?, iconName: String? = null): ImageVector {
     when (iconName?.lowercase()?.trim()) {
         "directions_car", "car" -> return Icons.Default.DirectionsCar
+        "local_gas_station", "gas", "fuel" -> return Icons.Default.LocalGasStation
+        "local_parking", "parking" -> return Icons.Default.LocalParking
         "shopping_cart", "cart" -> return Icons.Default.ShoppingCart
         "shopping_bag", "clothing" -> return Icons.Default.ShoppingBag
+        "checkroom" -> return Icons.Default.Checkroom
         "home", "house" -> return Icons.Default.Home
-        "restaurant", "food" -> return Icons.Default.Restaurant
+        "restaurant", "food", "utensils" -> return Icons.Default.Restaurant
         "local_hospital", "health", "favorite" -> return Icons.Default.LocalHospital
+        "medication", "pill" -> return Icons.Default.Medication
         "subscriptions", "tv" -> return Icons.Default.Tv
         "work", "payments" -> return Icons.Default.Work
         "savings" -> return Icons.Default.Savings
@@ -38,21 +42,29 @@ fun getCategoryVectorIcon(categoryIdOrName: String?, iconName: String? = null): 
         "coffee", "cafe" -> return Icons.Default.LocalCafe
         "receipt" -> return Icons.Default.Receipt
         "pets" -> return Icons.Default.Pets
+        "build", "wrench" -> return Icons.Default.Build
+        "wifi" -> return Icons.Default.Wifi
+        "gift", "card_giftcard" -> return Icons.Default.CardGiftcard
+        "smartphone" -> return Icons.Default.Smartphone
         "category" -> return Icons.Default.Category
         "credit_card" -> return Icons.Default.CreditCard
     }
+
     val id = categoryIdOrName?.lowercase()?.trim() ?: ""
     return when {
-        id.contains("transport") || id.contains("gasolin") || id.contains("coche") || id.contains("peaje") || id.contains("parking") -> Icons.Default.DirectionsCar
-        id.contains("super") || id.contains("compra") || id.contains("alimenta") -> Icons.Default.ShoppingCart
-        id.contains("restaur") || id.contains("comida") || id.contains("cena") || id.contains("bar") -> Icons.Default.Restaurant
-        id.contains("ropa") || id.contains("tienda") -> Icons.Default.ShoppingBag
+        id.contains("gasolin") || id.contains("combustible") -> Icons.Default.LocalGasStation
+        id.contains("parking") || id.contains("aparcamiento") -> Icons.Default.LocalParking
+        id.contains("transport") || id.contains("coche") || id.contains("peaje") -> Icons.Default.DirectionsCar
+        id.contains("super") || id.contains("compra") -> Icons.Default.ShoppingCart
+        id.contains("restaur") || id.contains("comida") || id.contains("cena") || id.contains("bar") || id.contains("alimenta") -> Icons.Default.Restaurant
+        id.contains("ropa") || id.contains("moda") -> Icons.Default.Checkroom
+        id.contains("tienda") -> Icons.Default.ShoppingBag
         id.contains("leisure") || id.contains("ocio") || id.contains("entreten") || id.contains("cine") || id.contains("juego") -> Icons.Default.SportsEsports
         id.contains("housing") || id.contains("vivienda") || id.contains("hogar") || id.contains("alquiler") || id.contains("hipoteca") -> Icons.Default.Home
         id.contains("health") || id.contains("salud") || id.contains("farmacia") || id.contains("medic") -> Icons.Default.LocalHospital
         id.contains("subscription") || id.contains("suscrip") || id.contains("streaming") || id.contains("netflix") || id.contains("spotify") -> Icons.Default.Tv
-        id.contains("salary") || id.contains("nomina") || id.contains("sueldo") || id.contains("ingreso") -> Icons.Default.Work
-        id.contains("saving") || id.contains("ahorro") || id.contains("inversion") -> Icons.Default.Savings
+        id.contains("salary") || id.contains("nomina") || id.contains("sueldo") -> Icons.Default.Work
+        id.contains("saving") || id.contains("ahorro") || id.contains("inversion") || id.contains("ingreso") -> Icons.Default.Savings
         id.contains("viaje") || id.contains("vuelo") || id.contains("hotel") -> Icons.Default.Flight
         id.contains("cafe") || id.contains("desayuno") -> Icons.Default.LocalCafe
         id.contains("factura") || id.contains("recibo") || id.contains("impuesto") || id.contains("luz") || id.contains("agua") -> Icons.Default.Receipt
@@ -65,19 +77,20 @@ fun getCategoryVectorIcon(categoryIdOrName: String?, iconName: String? = null): 
 
 /**
  * Componente visual reutilizable para mostrar el icono de categoría en un contenedor redondeado
- * translúcido con el color temático de la categoría.
+ * translúcido con el color temático oficial de la categoría.
  */
 @Composable
 fun CategoryIcon(
     categoryIdOrName: String?,
     iconName: String? = null,
     colorHex: String? = null,
+    categories: List<Category>? = null,
     size: Dp = 36.dp,
     iconSize: Dp = 18.dp,
     shapeRadius: Dp = 10.dp,
     modifier: Modifier = Modifier
 ) {
-    val cat = Category.findByName(categoryIdOrName ?: "")
+    val cat = Category.findByName(categoryIdOrName ?: "", categories)
     val resolvedIconName = if (!iconName.isNullOrBlank()) iconName else cat.icon
     val catColor = if (!colorHex.isNullOrBlank()) {
         try {

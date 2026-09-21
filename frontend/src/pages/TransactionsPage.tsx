@@ -3,6 +3,7 @@ import { Card } from '../components/ui/Card';
 import { Search, Check, X, ChevronUp, ChevronDown, Filter, Calendar, Info, CreditCard } from 'lucide-react';
 import { getCategories, updateTransaction } from '../services/api';
 import { TransactionDetailModal } from '../components/TransactionDetailModal';
+import { CategoryBadge } from '../components/CategoryBadge';
 
 interface TransactionsPageProps {
     transactions: any[];
@@ -292,21 +293,19 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                                 </button>
                                             </div>
                                         ) : (
-                                            <button
+                                            <CategoryBadge
+                                                categoryName={t.category_name}
+                                                parentCategoryName={t.parent_category_name}
+                                                categoryColor={t.category_color}
+                                                categoryIcon={t.category_icon}
+                                                categoryId={t.category}
+                                                categories={categories}
                                                 onClick={(e) => { 
                                                     e.stopPropagation();
                                                     setEditingId(t.id); 
                                                     setSelectedCategory(t.category); 
                                                 }}
-                                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold shadow-sm cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all ${t.category_name
-                                                        ? 'bg-secondary/90 text-foreground border border-border/80'
-                                                        : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                                                    }`}
-                                            >
-                                                {t.parent_category_name 
-                                                    ? `${t.parent_category_name} › ${t.category_name}`
-                                                    : (t.category_name || 'Asignar')}
-                                            </button>
+                                            />
                                         )}
                                     </td>
                                     <td className={`px-6 py-4 text-right font-semibold tabular-nums ${t.type === 'income' ? 'text-income' : 'text-foreground'}`}>

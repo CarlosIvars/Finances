@@ -2,8 +2,9 @@ import { useState, useMemo, useEffect } from 'react';
 import { StatCard } from '../components/ui/StatCard';
 import { Card } from '../components/ui/Card';
 import { Calendar, ChevronDown, Sparkles, Loader2, Wallet } from 'lucide-react';
-import { generateInsights, getBudgetComparison } from '../services/api';
-import type { BudgetComparison } from '../services/api';
+import { generateInsights, getBudgetComparison, getCategories } from '../services/api';
+import type { BudgetComparison, Category } from '../services/api';
+import { CategoryBadge } from '../components/CategoryBadge';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend
@@ -31,6 +32,11 @@ export function Dashboard({ transactions }: DashboardProps) {
     const [aiMessage, setAiMessage] = useState('');
     const [budgetComparison, setBudgetComparison] = useState<BudgetComparison[]>([]);
     const [loadingBudget, setLoadingBudget] = useState(true);
+    const [categories, setCategories] = useState<Category[]>([]);
+
+    useEffect(() => {
+        getCategories().then(setCategories).catch(console.error);
+    }, []);
 
     // Fetch budget comparison data
     useEffect(() => {
@@ -347,15 +353,36 @@ export function Dashboard({ transactions }: DashboardProps) {
                 </div>
                 <div className="divide-y divide-border/60">
                     {filteredTransactions.slice(0, 8).map((t, idx) => (
-                        <div key={idx} className="py-3.5 flex items-center justify-between group">
-                            <div className="flex items-center gap-3.5">
-                                <div className={`w-2.5 h-2.5 rounded-full ${t.type === 'income' ? 'bg-income' : 'bg-expense'}`} />
-                                <div>
+                        <div key={idx} className="py-3.5 flex items-center justify-between group hover:bg-secondary/20 px-2 rounded-xl transition-colors">
+                            <div className="flex items-center gap-3.5 min-w-0">
+                                <CategoryBadge
+                                    categoryName={t.category_name}
+                                    parentCategoryName={t.parent_category_name}
+                                    categoryColor={t.category_color}
+                                    categoryIcon={t.category_icon}
+                                    categoryId={t.category}
+                                    categories={categories}
+                                    variant="icon-only"
+                                    size="md"
+                                />
+                                <div className="min-w-0">
                                     <p className="text-sm font-semibold text-foreground truncate max-w-xs">{t.description}</p>
-                                    <p className="text-xs text-muted-foreground mt-0.5 font-medium">{t.date} • {t.category_name || 'Sin categoría'}</p>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                        <span className="text-xs text-muted-foreground font-medium">{t.date}</span>
+                                        <span className="text-xs text-muted-foreground">•</span>
+                                        <CategoryBadge
+                                            categoryName={t.category_name}
+                                            parentCategoryName={t.parent_category_name}
+                                            categoryColor={t.category_color}
+                                            categoryIcon={t.category_icon}
+                                            categoryId={t.category}
+                                            categories={categories}
+                                            size="xs"
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                            <span className={`text-sm font-semibold ${t.type === 'income' ? 'text-income' : 'text-foreground'}`}>
+                            <span className={`text-sm font-semibold whitespace-nowrap pl-4 ${t.type === 'income' ? 'text-income' : 'text-foreground'}`}>
                                 {t.type === 'income' ? '+' : '-'}{Math.abs(t.amount).toFixed(2)} €
                             </span>
                         </div>

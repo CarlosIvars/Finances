@@ -245,6 +245,9 @@ export async function syncCategories(): Promise<void> {
             id: c.id,
             name: c.name,
             color: c.color,
+            icon: c.icon,
+            parent: c.parent,
+            parent_name: c.parent_name,
             is_income: c.is_income,
         })));
     } catch (error) {
@@ -261,6 +264,9 @@ export async function getOfflineCategories() {
                 id: c.id,
                 name: c.name,
                 color: c.color,
+                icon: c.icon,
+                parent: c.parent,
+                parent_name: c.parent_name,
                 is_income: c.is_income,
             })));
             return categories;

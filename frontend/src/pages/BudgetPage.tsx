@@ -3,6 +3,7 @@ import { Card } from '../components/ui/Card';
 import { Loader2, Sparkles, Save, ChevronDown, Check, AlertTriangle } from 'lucide-react';
 import { getCategories, getBudgets, saveBudgets, getBudgetComparison, getBudgetAdvice } from '../services/api';
 import type { Category, Budget, BudgetComparison } from '../services/api';
+import { CategoryBadge } from '../components/CategoryBadge';
 
 export function BudgetPage() {
     const [categories, setCategories] = useState<Category[]>([]);
@@ -222,10 +223,13 @@ export function BudgetPage() {
                                     className={`p-4 rounded-2xl border transition-colors ${isOver ? 'border-red-500/30 bg-red-500/5' : 'border-border/80 bg-secondary/30 hover:bg-secondary/50'}`}
                                 >
                                     <div className="flex items-center gap-4">
-                                        {/* Color indicator */}
-                                        <div
-                                            className="w-2.5 h-10 rounded-full flex-shrink-0 shadow-sm"
-                                            style={{ backgroundColor: cat.color }}
+                                        {/* Category Icon */}
+                                        <CategoryBadge
+                                            categoryName={cat.name}
+                                            categoryColor={cat.color}
+                                            categoryIcon={cat.icon}
+                                            variant="icon-only"
+                                            size="md"
                                         />
 
                                         {/* Category name */}

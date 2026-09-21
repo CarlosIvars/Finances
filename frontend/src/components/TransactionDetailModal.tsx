@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, CreditCard, Tag, Calendar, Building2, Smartphone, FileText, Check, ChevronDown, ChevronRight, Layers } from 'lucide-react';
 import type { Category } from '../services/api';
 import { updateTransaction } from '../services/api';
+import { CategoryBadge } from './CategoryBadge';
 
 interface TransactionDetailModalProps {
     transaction: any;
@@ -69,9 +70,16 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                 {/* Header */}
                 <div className="p-6 border-b border-border/60 flex items-center justify-between bg-muted/10">
                     <div className="flex items-center gap-3">
-                        <div className={`p-3 rounded-2xl ${isIncome ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-primary/10 text-primary border border-primary/20'}`}>
-                            <CreditCard className="w-6 h-6" />
-                        </div>
+                        <CategoryBadge
+                            categoryName={transaction.category_name}
+                            parentCategoryName={transaction.parent_category_name}
+                            categoryColor={transaction.category_color}
+                            categoryIcon={transaction.category_icon}
+                            categoryId={transaction.category}
+                            categories={categories}
+                            variant="icon-only"
+                            size="lg"
+                        />
                         <div>
                             <h2 className="text-xl font-sans font-bold text-foreground line-clamp-1">
                                 {transaction.description}
@@ -110,10 +118,21 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
 
                     {/* Categorization Section */}
                     <div className="space-y-3">
-                        <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                            <Tag size={16} className="text-primary" />
-                            Categoría y Clasificación
-                        </label>
+                        <div className="flex items-center justify-between">
+                            <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                <Tag size={16} className="text-primary" />
+                                Categoría y Clasificación
+                            </label>
+                            <CategoryBadge
+                                categoryName={transaction.category_name}
+                                parentCategoryName={transaction.parent_category_name}
+                                categoryColor={transaction.category_color}
+                                categoryIcon={transaction.category_icon}
+                                categoryId={transaction.category}
+                                categories={categories}
+                                size="sm"
+                            />
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
                             <select
                                 value={selectedCategory}

@@ -26,6 +26,7 @@ import java.util.Locale
 @Composable
 fun TransactionDetailDialog(
     transaction: Transaction,
+    categories: List<Category> = emptyList(),
     onDismiss: () -> Unit,
     onRecategorizeClick: () -> Unit,
     onDeleteClick: () -> Unit
@@ -36,7 +37,7 @@ fun TransactionDetailDialog(
     val amountColor = if (isIncome) IncomeGreen else ExpenseRed
     val prefix = if (isIncome) "+" else "-"
 
-    val category = Category.findByName(transaction.category)
+    val category = Category.findByName(transaction.category, categories)
     val catColor = try {
         Color(android.graphics.Color.parseColor(category.colorHex))
     } catch (_: Exception) {
@@ -66,8 +67,10 @@ fun TransactionDetailDialog(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     CategoryIcon(
-                        categoryIdOrName = if (isIncome) "salary" else category.id,
-                        colorHex = if (isIncome) "#10B981" else category.colorHex,
+                        categoryIdOrName = category.id,
+                        iconName = category.icon,
+                        colorHex = category.colorHex,
+                        categories = categories,
                         size = 40.dp,
                         iconSize = 20.dp,
                         shapeRadius = 10.dp
@@ -157,20 +160,34 @@ fun TransactionDetailDialog(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            Text("Categoría", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-                            Text(
-                                text = if (!transaction.parentCategory.isNullOrBlank()) {
-                                    "${transaction.parentCategory} › ${transaction.category}"
-                                } else if (!transaction.subCategory.isNullOrBlank()) {
-                                    "${transaction.category} › ${transaction.subCategory}"
-                                } else {
-                                    transaction.category
-                                },
-                                color = catColor,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            CategoryIcon(
+                                categoryIdOrName = category.id,
+                                iconName = category.icon,
+                                colorHex = category.colorHex,
+                                categories = categories,
+                                size = 32.dp,
+                                iconSize = 16.dp,
+                                shapeRadius = 8.dp
                             )
+                            Column {
+                                Text("Categoría", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                                Text(
+                                    text = if (!transaction.parentCategory.isNullOrBlank()) {
+                                        "${transaction.parentCategory} › ${transaction.category}"
+                                    } else if (!transaction.subCategory.isNullOrBlank()) {
+                                        "${transaction.category} › ${transaction.subCategory}"
+                                    } else {
+                                        category.name
+                                    },
+                                    color = catColor,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
                         }
                         OutlinedButton(
                             onClick = onRecategorizeClick,

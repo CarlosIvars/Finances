@@ -246,6 +246,7 @@ class MainActivity : ComponentActivity() {
                                 FinancIAsTab.DASHBOARD -> {
                                     DashboardScreen(
                                         transactions = transactions,
+                                        categories = categories,
                                         isTrackerActive = isPermissionGranted,
                                         onNavigateToTransactions = { selectedTab = FinancIAsTab.TRANSACTIONS },
                                         onOpenAddTransaction = { type ->
@@ -286,7 +287,8 @@ class MainActivity : ComponentActivity() {
 
                                 FinancIAsTab.ANALYTICS -> {
                                     AnalyticsScreen(
-                                        transactions = transactions
+                                        transactions = transactions,
+                                        categories = categories
                                     )
                                 }
 
@@ -355,6 +357,7 @@ class MainActivity : ComponentActivity() {
                 activeConflict?.let { conflict ->
                     MergeConflictDialog(
                         conflict = conflict,
+                        categories = categories,
                         onResolve = { keepLocal ->
                             coroutineScope.launch {
                                 repository.resolveConflict(conflict, keepLocal)

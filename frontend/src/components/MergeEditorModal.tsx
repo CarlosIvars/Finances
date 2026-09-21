@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, Check, ArrowRight, Laptop, Cloud, X } from 'lucide-react';
+import { CategoryBadge } from './CategoryBadge';
 
 export interface SyncConflictItem {
     id: string | number;
@@ -103,10 +104,12 @@ export const MergeEditorModal: React.FC<MergeEditorModalProps> = ({
                                 </div>
 
                                 <div>
-                                    <span className="text-[11px] text-muted-foreground block">Categoría:</span>
-                                    <span className={`font-semibold ${catDiff ? 'text-amber-500 dark:text-amber-400 font-bold' : 'text-foreground'}`}>
-                                        {local.category_name || `ID: ${local.category_id || 'Sin asignar'}`}
-                                    </span>
+                                    <span className="text-[11px] text-muted-foreground block mb-1">Categoría:</span>
+                                    <CategoryBadge
+                                        categoryName={local.category_name}
+                                        categoryId={local.category_id}
+                                        size="sm"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -154,10 +157,12 @@ export const MergeEditorModal: React.FC<MergeEditorModalProps> = ({
                                 </div>
 
                                 <div>
-                                    <span className="text-[11px] text-muted-foreground block">Categoría:</span>
-                                    <span className={`font-semibold ${catDiff ? 'text-amber-500 dark:text-amber-400 font-bold' : 'text-foreground'}`}>
-                                        {server.category_name || `ID: ${server.category_id || 'Sin asignar'}`}
-                                    </span>
+                                    <span className="text-[11px] text-muted-foreground block mb-1">Categoría:</span>
+                                    <CategoryBadge
+                                        categoryName={server.category_name}
+                                        categoryId={server.category_id}
+                                        size="sm"
+                                    />
                                 </div>
                             </div>
                         </div>

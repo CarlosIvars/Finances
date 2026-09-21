@@ -34,30 +34,8 @@ import type { Category } from '../services/api';
 import { getCategoriesTree, createCategory, updateCategory, deleteCategory } from '../services/api';
 import { syncCategories } from '../services/syncService';
 
-export const CATEGORY_ICONS_LIST: Array<{ value: string; icon: React.ElementType; label: string }> = [
-    { value: 'credit_card', icon: CreditCard, label: 'General / Tarjeta' },
-    { value: 'directions_car', icon: Car, label: 'Transporte / Coche' },
-    { value: 'shopping_cart', icon: ShoppingCart, label: 'Supermercado' },
-    { value: 'shopping_bag', icon: ShoppingBag, label: 'Compras / Ropa' },
-    { value: 'home', icon: House, label: 'Hogar / Vivienda' },
-    { value: 'restaurant', icon: Utensils, label: 'Comida / Restaurantes' },
-    { value: 'local_hospital', icon: HeartPulse, label: 'Salud / Farmacia' },
-    { value: 'work', icon: BriefcaseBusiness, label: 'Trabajo / Nómina' },
-    { value: 'school', icon: GraduationCap, label: 'Educación' },
-    { value: 'sports_esports', icon: Gamepad2, label: 'Ocio / Juegos' },
-    { value: 'subscriptions', icon: Tv, label: 'Suscripciones / TV' },
-    { value: 'savings', icon: PiggyBank, label: 'Ahorro / Inversión' },
-    { value: 'flight', icon: Plane, label: 'Viajes' },
-    { value: 'coffee', icon: Coffee, label: 'Café / Bares' },
-    { value: 'receipt', icon: Receipt, label: 'Facturas / Recibos' },
-    { value: 'pets', icon: PawPrint, label: 'Mascotas' },
-];
-
-export const getCategoryIconComponent = (iconName?: string | null): React.ElementType => {
-    if (!iconName) return CreditCard;
-    const found = CATEGORY_ICONS_LIST.find(i => i.value === iconName);
-    return found ? found.icon : CreditCard;
-};
+import { CATEGORY_ICONS_LIST, getCategoryIconComponent } from './CategoryBadge';
+export { CATEGORY_ICONS_LIST, getCategoryIconComponent };
 
 interface CategoriesTreeViewProps {
     onCategorySelected?: (category: Category) => void;

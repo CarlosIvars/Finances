@@ -213,10 +213,13 @@ fun CategoriesScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(8.dp)
-                                                .background(catColor, shape = CircleShape)
+                                        CategoryIcon(
+                                            categoryIdOrName = sub.id,
+                                            iconName = sub.icon,
+                                            colorHex = sub.colorHex,
+                                            size = 26.dp,
+                                            iconSize = 13.dp,
+                                            shapeRadius = 6.dp
                                         )
                                         Text(
                                             text = sub.name,

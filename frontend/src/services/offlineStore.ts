@@ -12,10 +12,13 @@ interface PendingTransaction {
     synced: boolean;
 }
 
-interface CachedCategory {
+export interface CachedCategory {
     id: number;
     name: string;
     color: string;
+    icon?: string;
+    parent?: number | null;
+    parent_name?: string | null;
     is_income: boolean;
 }
 
@@ -86,8 +89,8 @@ export async function getPendingTransactions(): Promise<PendingTransaction[]> {
 
 export async function getUnsyncedTransactions(): Promise<PendingTransaction[]> {
     const db = await getDB();
-    const index = db.transaction('pendingTransactions').store.index('by-synced');
-    return index.getAll(IDBKeyRange.only(false)) as Promise<PendingTransaction[]>;
+    const all = await db.getAll('pendingTransactions') as PendingTransaction[];
+    return all.filter(tx => !tx.synced);
 }
 
 export async function markTransactionSynced(id: string): Promise<void> {
@@ -106,8 +109,8 @@ export async function deletePendingTransaction(id: string): Promise<void> {
 
 export async function clearSyncedTransactions(): Promise<void> {
     const db = await getDB();
-    const index = db.transaction('pendingTransactions').store.index('by-synced');
-    const synced = await index.getAll(IDBKeyRange.only(true)) as PendingTransaction[];
+    const all = await db.getAll('pendingTransactions') as PendingTransaction[];
+    const synced = all.filter(item => item.synced);
     const tx = db.transaction('pendingTransactions', 'readwrite');
     for (const item of synced) {
         await tx.store.delete(item.id);

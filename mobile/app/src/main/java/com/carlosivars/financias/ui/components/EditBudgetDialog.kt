@@ -40,10 +40,13 @@ fun EditBudgetDialog(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(18.dp)
-                        .background(catColor, shape = CircleShape)
+                CategoryIcon(
+                    categoryIdOrName = initialCategory.id,
+                    iconName = initialCategory.icon,
+                    colorHex = initialCategory.colorHex,
+                    size = 32.dp,
+                    iconSize = 16.dp,
+                    shapeRadius = 8.dp
                 )
                 Text(
                     text = "Presupuesto: ${initialCategory.name}",

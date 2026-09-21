@@ -27,7 +27,8 @@ import java.util.Locale
 
 @Composable
 fun AnalyticsScreen(
-    transactions: List<Transaction>
+    transactions: List<Transaction>,
+    categories: List<Category> = emptyList()
 ) {
     val expenseTransactions = transactions.filter { it.type == TransactionType.EXPENSE }
     val totalExpense = expenseTransactions.sumOf { it.amount }
@@ -61,7 +62,7 @@ fun AnalyticsScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Distribución y desglose de tus gastos",
+                    text = "Distribución y tendencias de tus hábitos de gasto",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp
                 )
@@ -73,7 +74,7 @@ fun AnalyticsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
             ) {
                 Row(
@@ -126,15 +127,32 @@ fun AnalyticsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("Mayor Gasto", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = topCategory?.first ?: "Sin datos",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (topCategory != null) {
+                                val topCat = Category.findByName(topCategory.first, categories)
+                                CategoryIcon(
+                                    categoryIdOrName = topCat.id,
+                                    iconName = topCat.icon,
+                                    colorHex = topCat.colorHex,
+                                    categories = categories,
+                                    size = 28.dp,
+                                    iconSize = 14.dp,
+                                    shapeRadius = 8.dp
+                                )
+                            }
+                            Text(
+                                text = topCategory?.first ?: "Sin datos",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = topCategory?.let { String.format(Locale.GERMANY, "%,.2f €", it.second) } ?: "-",
@@ -207,7 +225,7 @@ fun AnalyticsScreen(
             }
         } else {
             items(categoryTotals) { (catName, amount) ->
-                val category = Category.findByName(catName)
+                val category = Category.findByName(catName, categories)
                 val catColor = try {
                     Color(android.graphics.Color.parseColor(category.colorHex))
                 } catch (_: Exception) {
@@ -238,7 +256,9 @@ fun AnalyticsScreen(
                             ) {
                                 CategoryIcon(
                                     categoryIdOrName = category.id,
+                                    iconName = category.icon,
                                     colorHex = category.colorHex,
+                                    categories = categories,
                                     size = 36.dp,
                                     iconSize = 18.dp,
                                     shapeRadius = 10.dp

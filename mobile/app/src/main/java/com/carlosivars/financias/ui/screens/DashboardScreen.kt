@@ -27,6 +27,7 @@ import java.util.Locale
 @Composable
 fun DashboardScreen(
     transactions: List<Transaction>,
+    categories: List<Category> = emptyList(),
     isTrackerActive: Boolean,
     onNavigateToTransactions: () -> Unit,
     onOpenAddTransaction: (TransactionType) -> Unit,
@@ -344,19 +345,19 @@ fun DashboardScreen(
             }
         } else {
             items(recentTransactions, key = { it.id }) { tx ->
-                TransactionRowItem(tx)
+                TransactionRowItem(tx, categories)
             }
         }
     }
 }
 
 @Composable
-fun TransactionRowItem(tx: Transaction) {
+fun TransactionRowItem(tx: Transaction, categories: List<Category> = emptyList()) {
     val isIncome = tx.type == TransactionType.INCOME
     val amountColor = if (isIncome) IncomeGreen else ExpenseRed
     val prefix = if (isIncome) "+" else "-"
 
-    val category = Category.findByName(tx.category)
+    val category = Category.findByName(tx.category, categories)
     val catColor = try {
         Color(android.graphics.Color.parseColor(category.colorHex))
     } catch (_: Exception) {
@@ -381,9 +382,10 @@ fun TransactionRowItem(tx: Transaction) {
                 modifier = Modifier.weight(1f)
             ) {
                 CategoryIcon(
-                    categoryIdOrName = if (isIncome) "salary" else category.id,
-                    iconName = if (isIncome) "payments" else category.icon,
-                    colorHex = if (isIncome) "#10B981" else category.colorHex,
+                    categoryIdOrName = category.id,
+                    iconName = category.icon,
+                    colorHex = category.colorHex,
+                    categories = categories,
                     size = 44.dp,
                     iconSize = 22.dp,
                     shapeRadius = 12.dp
@@ -406,7 +408,7 @@ fun TransactionRowItem(tx: Transaction) {
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
-                            text = tx.category,
+                            text = category.name,
                             color = catColor,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
@@ -415,16 +417,16 @@ fun TransactionRowItem(tx: Transaction) {
                         Text(
                             text = tx.date,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 11.sp
+                            fontSize = 12.sp
                         )
                     }
                 }
             }
 
             Text(
-                text = String.format(Locale.GERMANY, "%s%,.2f €", prefix, tx.amount),
+                text = String.format(Locale.GERMANY, "%s %,.2f €", prefix, tx.amount),
                 color = amountColor,
-                fontSize = 16.sp,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.Bold
             )
         }
