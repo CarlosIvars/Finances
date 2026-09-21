@@ -24,6 +24,9 @@ interface TransactionDao {
     @Query("UPDATE transactions SET category = :category, pendingSync = 1 WHERE id = :id")
     suspend fun updateCategory(id: String, category: String): Int
 
+    @Query("UPDATE transactions SET category = :category, subCategory = :subCategory, parentCategory = :parentCategory, pendingSync = 1 WHERE id = :id")
+    suspend fun updateCategoryAndHierarchy(id: String, category: String, subCategory: String?, parentCategory: String?): Int
+
     @Query("SELECT * FROM transactions WHERE pendingSync = 1")
     suspend fun getPendingSyncTransactions(): List<TransactionEntity>
 

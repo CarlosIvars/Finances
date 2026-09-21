@@ -157,12 +157,41 @@ export interface Category {
     color: string;
     is_income: boolean;
     parent: number | null;
-    user: number;
+    parent_name?: string | null;
+    subcategories?: Category[];
 }
+export const Category = {};
 
 export const getCategories = async (): Promise<Category[]> => {
     const response = await api.get('/categories/');
     return response.data;
+};
+
+export const getCategoriesTree = async (): Promise<Category[]> => {
+    const response = await api.get('/categories/tree/');
+    return response.data;
+};
+
+export const createCategory = async (data: {
+    name: string;
+    color?: string;
+    is_income?: boolean;
+    parent?: number | null;
+}): Promise<Category> => {
+    const response = await api.post('/categories/', data);
+    return response.data;
+};
+
+export const updateCategory = async (
+    id: number,
+    data: Partial<{ name: string; color: string; is_income: boolean; parent: number | null }>
+): Promise<Category> => {
+    const response = await api.patch(`/categories/${id}/`, data);
+    return response.data;
+};
+
+export const deleteCategory = async (id: number): Promise<void> => {
+    await api.delete(`/categories/${id}/`);
 };
 
 // Alerts

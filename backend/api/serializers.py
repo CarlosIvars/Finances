@@ -3,10 +3,18 @@ from .models import Account, Category, Transaction, ImportBatch, ClassificationR
 
 
 class CategorySerializer(serializers.ModelSerializer):
+    parent_name = serializers.ReadOnlyField(source='parent.name')
+    subcategories = serializers.SerializerMethodField()
+
     class Meta:
         model = Category
-        fields = ['id', 'name', 'parent', 'color', 'is_income']
+        fields = ['id', 'name', 'parent', 'parent_name', 'color', 'is_income', 'subcategories']
         # RGPD: 'user' field excluded — never expose user ID to client
+
+    def get_subcategories(self, obj):
+        # Obtener hijos directos recursivamente si existen
+        children = obj.children.all()
+        return CategorySerializer(children, many=True, context=self.context).data
 
     def validate(self, data):
         """RGPD: Verificar que el parent pertenece al mismo usuario."""
@@ -25,14 +33,15 @@ class AccountSerializer(serializers.ModelSerializer):
 
 class TransactionSerializer(serializers.ModelSerializer):
     category_name = serializers.ReadOnlyField(source='category.name')
+    parent_category_name = serializers.ReadOnlyField(source='category.parent.name')
     account_name = serializers.ReadOnlyField(source='account.name')
 
     class Meta:
         model = Transaction
         fields = [
             'id', 'date', 'description', 'amount', 'type',
-            'category', 'category_name', 'account', 'account_name',
-            'is_pending', 'import_batch', 'created_at'
+            'category', 'category_name', 'parent_category_name', 'account', 'account_name',
+            'raw_data', 'metadata', 'is_pending', 'import_batch', 'created_at'
         ]
         read_only_fields = ['user', 'created_at']
 
@@ -91,14 +100,15 @@ class BudgetSerializer(serializers.ModelSerializer):
 class SyncTransactionSerializer(serializers.ModelSerializer):
     """Serializer for mobile sync - includes all fields needed for offline storage"""
     category_name = serializers.ReadOnlyField(source='category.name')
+    parent_category_name = serializers.ReadOnlyField(source='category.parent.name')
     category_color = serializers.ReadOnlyField(source='category.color')
     
     class Meta:
         model = Transaction
         fields = [
             'id', 'date', 'description', 'amount', 'type',
-            'category', 'category_name', 'category_color',
-            'is_pending', 'created_at'
+            'category', 'category_name', 'parent_category_name', 'category_color',
+            'raw_data', 'metadata', 'is_pending', 'created_at'
         ]
 
 

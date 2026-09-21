@@ -52,6 +52,7 @@ class Transaction(models.Model):
     type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     
     raw_data = models.TextField(blank=True, help_text="Original raw description from bank")
+    metadata = models.JSONField(default=dict, blank=True, help_text="Structured notification metadata (card, bank, tags, etc.)")
     import_batch = models.ForeignKey(ImportBatch, on_delete=models.SET_NULL, null=True, blank=True, related_name='transactions')
     
     is_pending = models.BooleanField(default=True, help_text="Requires manual review/categorization")

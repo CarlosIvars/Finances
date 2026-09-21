@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Card } from '../components/ui/Card';
-import { Search, Check, X, ChevronUp, ChevronDown, Filter, Calendar } from 'lucide-react';
+import { Search, Check, X, ChevronUp, ChevronDown, Filter, Calendar, Info, CreditCard } from 'lucide-react';
 import { getCategories, updateTransaction } from '../services/api';
+import { TransactionDetailModal } from '../components/TransactionDetailModal';
 
 interface TransactionsPageProps {
     transactions: any[];
@@ -21,6 +22,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
     const [categories, setCategories] = useState<any[]>([]);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+    const [detailTransaction, setDetailTransaction] = useState<any | null>(null);
 
     useEffect(() => {
         getCategories().then(setCategories).catch(console.error);
@@ -226,22 +228,50 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                         IMPORTE <SortIcon field="amount" />
                                     </div>
                                 </th>
+                                <th className="px-4 py-4 text-center w-12">
+                                    <span className="sr-only">Detalles</span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                            {filteredAndSorted.map((t) => (
-                                <tr key={t.id} className="hover:bg-muted/50 transition duration-150 group">
+                            {filteredAndSorted.map((t) => {
+                                const cardTag = t.metadata?.card || t.metadata?.card_masked || t.metadata?.card_last4;
+                                const hasMetadata = t.metadata && Object.keys(t.metadata).length > 0;
+                                
+                                return (
+                                <tr 
+                                    key={t.id} 
+                                    className="hover:bg-muted/50 transition duration-150 group cursor-pointer"
+                                    onClick={(e) => {
+                                        // Don't trigger if clicked on select or button
+                                        if ((e.target as HTMLElement).closest('select, button')) return;
+                                        setDetailTransaction(t);
+                                    }}
+                                >
                                     <td className="px-6 py-4 font-medium text-muted-foreground whitespace-nowrap">
                                         {new Date(t.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="max-w-sm truncate text-foreground font-medium group-hover:text-primary transition-colors">
-                                            {t.description}
+                                        <div className="flex flex-col">
+                                            <div className="max-w-sm truncate text-foreground font-medium group-hover:text-primary transition-colors flex items-center gap-2">
+                                                <span>{t.description}</span>
+                                                {cardTag && (
+                                                    <span className="inline-flex items-center gap-1 text-[11px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border" title={`Tarjeta: ${cardTag}`}>
+                                                        <CreditCard size={12} />
+                                                        {cardTag.includes('••') ? cardTag.substring(cardTag.indexOf('••')) : cardTag}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {t.metadata?.original_date && (
+                                                <span className="text-[11px] text-muted-foreground mt-0.5">
+                                                    Op: {t.metadata.original_date}
+                                                </span>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         {editingId === t.id ? (
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                                                 <select
                                                     className="appearance-none bg-background border border-border shadow-sm rounded px-2 py-1 text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                                                     value={selectedCategory || ''}
@@ -249,7 +279,9 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                                 >
                                                     <option value="">Seleccionar...</option>
                                                     {categories.map((c) => (
-                                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                                        <option key={c.id} value={c.id}>
+                                                            {c.parent_name ? `${c.parent_name} › ${c.name}` : c.name}
+                                                        </option>
                                                     ))}
                                                 </select>
                                                 <button onClick={() => handleCategoryChange(t.id)} className="text-emerald-400 hover:text-emerald-300">
@@ -261,24 +293,43 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                             </div>
                                         ) : (
                                             <button
-                                                onClick={() => { setEditingId(t.id); setSelectedCategory(t.category); }}
+                                                onClick={(e) => { 
+                                                    e.stopPropagation();
+                                                    setEditingId(t.id); 
+                                                    setSelectedCategory(t.category); 
+                                                }}
                                                 className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold shadow-sm cursor-pointer hover:ring-2 hover:ring-ring transition-colors ${t.category_name
                                                         ? 'bg-accent text-accent-foreground border border-border'
                                                         : 'bg-yellow-500/10 text-yellow-600 border border-yellow-500/20'
                                                     }`}
                                             >
-                                                {t.category_name || 'Asignar'}
+                                                {t.parent_category_name 
+                                                    ? `${t.parent_category_name} › ${t.category_name}`
+                                                    : (t.category_name || 'Asignar')}
                                             </button>
                                         )}
                                     </td>
                                     <td className={`px-6 py-4 text-right font-semibold tabular-nums ${t.type === 'income' ? 'text-emerald-500' : 'text-foreground'}`}>
                                         {t.type === 'income' ? '+' : '-'}{Math.abs(t.amount).toFixed(2)} €
                                     </td>
+                                    <td className="px-4 py-4 text-center">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setDetailTransaction(t);
+                                            }}
+                                            className={`p-1.5 rounded-lg transition-colors ${hasMetadata ? 'text-primary hover:bg-primary/10' : 'text-muted-foreground hover:bg-muted'}`}
+                                            title="Ver detalles y metadatos de la notificación"
+                                        >
+                                            <Info size={16} />
+                                        </button>
+                                    </td>
                                 </tr>
-                            ))}
+                            );
+                            })}
                             {filteredAndSorted.length === 0 && (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-12 text-center">
+                                    <td colSpan={5} className="px-6 py-12 text-center">
                                         <p className="text-muted-foreground">No se encontraron movimientos con estos filtros.</p>
                                     </td>
                                 </tr>
@@ -287,6 +338,18 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                     </table>
                 </div>
             </Card>
+
+            {/* Transaction Detail Modal */}
+            {detailTransaction && (
+                <TransactionDetailModal
+                    transaction={detailTransaction}
+                    categories={categories}
+                    onClose={() => setDetailTransaction(null)}
+                    onUpdated={() => {
+                        if (onTransactionUpdated) onTransactionUpdated();
+                    }}
+                />
+            )}
         </div>
     );
 }

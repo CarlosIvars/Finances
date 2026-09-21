@@ -161,7 +161,15 @@ class MainActivity : ComponentActivity() {
                                         },
                                         onRecategorizeTransaction = { txId, newCategory ->
                                             coroutineScope.launch {
-                                                repository.updateCategory(txId, newCategory)
+                                                val cat = com.carlosivars.financias.model.Category.ALL.find { 
+                                                    it.name.equals(newCategory, ignoreCase = true) 
+                                                }
+                                                val parent = cat?.parentName
+                                                repository.updateCategory(
+                                                    id = txId,
+                                                    newCategory = newCategory,
+                                                    parentCategory = parent
+                                                )
                                             }
                                         }
                                     )

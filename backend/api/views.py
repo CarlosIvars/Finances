@@ -90,6 +90,13 @@ class CategoryViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    @action(detail=False, methods=['get'])
+    def tree(self, request):
+        """Devuelve el árbol jerárquico de categorías (solo nodos raíz con sus subcategorías anidadas)."""
+        root_categories = self.get_queryset().filter(parent__isnull=True).prefetch_related('children')
+        serializer = self.get_serializer(root_categories, many=True)
+        return Response(serializer.data)
+
 
 class TransactionViewSet(viewsets.ModelViewSet):
     """SECURITY: Filter transactions by authenticated user"""
@@ -370,9 +377,16 @@ class SyncViewSet(viewsets.ViewSet):
         serializer = SyncTransactionSerializer(transactions, many=True)
         
         # Also return categories (they don't change often, small payload)
-        categories = Category.objects.filter(user=request.user)
+        categories = Category.objects.filter(user=request.user).select_related('parent')
         categories_data = [
-            {'id': c.id, 'name': c.name, 'color': c.color, 'is_income': c.is_income}
+            {
+                'id': c.id,
+                'name': c.name,
+                'parent_id': c.parent_id,
+                'parent_name': c.parent.name if c.parent else None,
+                'color': c.color,
+                'is_income': c.is_income
+            }
             for c in categories
         ]
         
@@ -418,7 +432,10 @@ class SyncViewSet(viewsets.ViewSet):
                 ).first()
                 
                 if existing:
-                    # Already exists, return its server_id
+                    # Update metadata/category if provided
+                    if tx_data.get('metadata') and not existing.metadata:
+                        existing.metadata = tx_data.get('metadata')
+                        existing.save(update_fields=['metadata'])
                     created.append({
                         'local_id': local_id,
                         'server_id': existing.id,
@@ -443,6 +460,8 @@ class SyncViewSet(viewsets.ViewSet):
                     description=tx_data.get('description', ''),
                     amount=tx_data.get('amount'),
                     type=tx_data.get('type', 'expense'),
+                    raw_data=tx_data.get('raw_data', ''),
+                    metadata=tx_data.get('metadata', {}),
                     is_pending=False,
                 )
                 

@@ -18,11 +18,13 @@ data class Transaction(
     val currency: String,
     val type: TransactionType,
     val category: String,
+    val subCategory: String? = null,
+    val parentCategory: String? = null,
     val date: String,
     val timestamp: Long,
     val source: TransactionSource,
     val rawNotificationText: String? = null,
+    val metadata: Map<String, String> = emptyMap(),
     val pendingSync: Boolean = false,
     val serverId: Int? = null
 )
-

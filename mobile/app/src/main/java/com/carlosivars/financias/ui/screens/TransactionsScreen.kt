@@ -37,6 +37,7 @@ fun TransactionsScreen(
     var selectedCategoryFilter by remember { mutableStateOf<String?>(null) }
     var transactionToDelete by remember { mutableStateOf<Transaction?>(null) }
     var transactionToRecategorize by remember { mutableStateOf<Transaction?>(null) }
+    var transactionForDetail by remember { mutableStateOf<Transaction?>(null) }
 
     val filteredTransactions = remember(transactions, searchQuery, selectedTypeFilter, selectedCategoryFilter) {
         transactions.filter { tx ->
@@ -242,11 +243,29 @@ fun TransactionsScreen(
                     SwipeableTransactionItem(
                         tx = tx,
                         onDeleteClick = { transactionToDelete = tx },
-                        onClick = { transactionToRecategorize = tx }
+                        onClick = { transactionForDetail = tx }
                     )
                 }
             }
         }
+    }
+
+    // Diálogo con metadatos completos de la notificación y detalles
+    transactionForDetail?.let { tx ->
+        com.carlosivars.financias.ui.components.TransactionDetailDialog(
+            transaction = tx,
+            onDismiss = { transactionForDetail = null },
+            onRecategorizeClick = {
+                val target = transactionForDetail
+                transactionForDetail = null
+                transactionToRecategorize = target
+            },
+            onDeleteClick = {
+                val target = transactionForDetail
+                transactionForDetail = null
+                transactionToDelete = target
+            }
+        )
     }
 
     // Diálogo para recategorizar movimiento
@@ -367,8 +386,13 @@ fun SwipeableTransactionItem(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        val displayCategory = when {
+                            !tx.parentCategory.isNullOrBlank() -> "${tx.parentCategory} › ${tx.category}"
+                            !tx.subCategory.isNullOrBlank() -> "${tx.category} › ${tx.subCategory}"
+                            else -> tx.category
+                        }
                         Text(
-                            text = tx.category,
+                            text = displayCategory,
                             color = catColor,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
@@ -379,6 +403,16 @@ fun SwipeableTransactionItem(
                             color = TextSecondary,
                             fontSize = 11.sp
                         )
+                        val cardTag = tx.metadata["card"] ?: tx.metadata["card_masked"] ?: tx.metadata["card_last4"]
+                        if (cardTag != null) {
+                            Text("•", color = TextSecondary, fontSize = 10.sp)
+                            Text(
+                                text = if (cardTag.contains("••")) "💳 " + cardTag.substring(cardTag.indexOf("••")) else "💳 $cardTag",
+                                color = TextSecondary,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
             }

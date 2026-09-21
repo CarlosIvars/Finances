@@ -99,8 +99,17 @@ class TransactionRepository(context: Context) {
         }
     }
 
-    suspend fun updateCategory(id: String, newCategory: String): Boolean = withContext(Dispatchers.IO) {
-        val rows = transactionDao.updateCategory(id, newCategory)
+    suspend fun updateCategory(
+        id: String, 
+        newCategory: String, 
+        newSubCategory: String? = null,
+        parentCategory: String? = null
+    ): Boolean = withContext(Dispatchers.IO) {
+        val rows = if (newSubCategory != null || parentCategory != null) {
+            transactionDao.updateCategoryAndHierarchy(id, newCategory, newSubCategory, parentCategory)
+        } else {
+            transactionDao.updateCategory(id, newCategory)
+        }
         rows > 0
     }
 

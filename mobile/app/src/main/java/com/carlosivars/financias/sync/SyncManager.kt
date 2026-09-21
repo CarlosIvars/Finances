@@ -107,6 +107,17 @@ class SyncManager(private val context: Context) {
             obj.put("amount", if (item.type == "INCOME") item.amount else -item.amount)
             obj.put("type", if (item.type == "INCOME") "income" else "expense")
 
+            if (!item.metadataJson.isNullOrBlank() && item.metadataJson != "{}") {
+                try {
+                    obj.put("metadata", JSONObject(item.metadataJson))
+                } catch (_: Exception) {}
+            }
+            if (!item.rawText.isNullOrBlank()) {
+                val rawObj = JSONObject()
+                rawObj.put("text", item.rawText)
+                obj.put("raw_data", rawObj)
+            }
+
             txArray.put(obj)
         }
         requestBody.put("transactions", txArray)
@@ -159,6 +170,14 @@ class SyncManager(private val context: Context) {
                 val newLocalId = "srv_${serverId}_${System.currentTimeMillis()}"
                 val hash = "server_sync_$serverId"
 
+                val metaObj = item.optJSONObject("metadata")
+                val metaJson = metaObj?.toString() ?: "{}"
+                val parentCat = if (item.has("parent_category_name") && !item.isNull("parent_category_name")) {
+                    item.getString("parent_category_name")
+                } else null
+                val rawDataObj = item.optJSONObject("raw_data")
+                val rawTxt = rawDataObj?.optString("text", null)
+
                 val entity = TransactionEntity(
                     id = newLocalId,
                     description = desc,
@@ -166,11 +185,14 @@ class SyncManager(private val context: Context) {
                     currency = "EUR",
                     type = type.name,
                     category = categoryName,
+                    subCategory = null,
+                    parentCategory = parentCat,
                     date = dateStr,
                     timestamp = System.currentTimeMillis(),
                     source = TransactionSource.STATEMENT.name,
                     notificationHash = hash,
-                    rawText = null,
+                    rawText = rawTxt,
+                    metadataJson = metaJson,
                     pendingSync = false,
                     serverId = serverId
                 )

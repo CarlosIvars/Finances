@@ -10,6 +10,7 @@ import { RegisterPage } from './pages/RegisterPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { InsightsPage } from './pages/InsightsPage';
 import { BudgetPage } from './pages/BudgetPage';
+import { CategoriesPage } from './pages/CategoriesPage';
 import { PrivacyPage } from './pages/PrivacyPage';
 import { BankingPage } from './pages/BankingPage';
 import { QuickExpenseForm } from './components/QuickExpenseForm';
@@ -128,6 +129,8 @@ function App() {
         return <BankingPage />;
       case 'transactions':
         return <TransactionsPage transactions={transactions} onTransactionUpdated={fetchData} />;
+      case 'categories':
+        return <CategoriesPage />;
       case 'analytics':
         return <AnalyticsPage transactions={transactions} />;
       case 'budget':
