@@ -12,10 +12,31 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.carlosivars.financias.model.Category
+
+/**
+ * Icono vectorial oficial para Ropa (Camiseta / Shirt), idéntico al icono de la web
+ * para garantizar consistencia visual absoluta entre Web y Móvil.
+ */
+val ShirtIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "Shirt",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).addPath(
+        pathData = PathParser().parsePathString(
+            "M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"
+        ).toNodes(),
+        fill = SolidColor(Color.White)
+    ).build()
+}
 
 /**
  * Retorna el ImageVector correspondiente a una categoría de gasto/ingreso,
@@ -27,11 +48,11 @@ fun getCategoryVectorIcon(categoryIdOrName: String?, iconName: String? = null): 
         "local_gas_station", "gas", "fuel" -> return Icons.Default.LocalGasStation
         "local_parking", "parking" -> return Icons.Default.LocalParking
         "shopping_cart", "cart" -> return Icons.Default.ShoppingCart
-        "shopping_bag", "clothing" -> return Icons.Default.ShoppingBag
-        "checkroom" -> return Icons.Default.Checkroom
+        "shopping_bag", "tienda" -> return Icons.Default.ShoppingBag
+        "checkroom", "shirt", "clothing", "ropa" -> return ShirtIcon
         "home", "house" -> return Icons.Default.Home
         "restaurant", "food", "utensils" -> return Icons.Default.Restaurant
-        "local_hospital", "health", "favorite" -> return Icons.Default.LocalHospital
+        "local_hospital", "health", "salud", "cross" -> return Icons.Default.LocalHospital
         "medication", "pill" -> return Icons.Default.Medication
         "subscriptions", "tv" -> return Icons.Default.Tv
         "work", "payments" -> return Icons.Default.Work
@@ -57,7 +78,7 @@ fun getCategoryVectorIcon(categoryIdOrName: String?, iconName: String? = null): 
         id.contains("transport") || id.contains("coche") || id.contains("peaje") -> Icons.Default.DirectionsCar
         id.contains("super") || id.contains("compra") -> Icons.Default.ShoppingCart
         id.contains("restaur") || id.contains("comida") || id.contains("cena") || id.contains("bar") || id.contains("alimenta") -> Icons.Default.Restaurant
-        id.contains("ropa") || id.contains("moda") -> Icons.Default.Checkroom
+        id.contains("ropa") || id.contains("moda") -> ShirtIcon
         id.contains("tienda") -> Icons.Default.ShoppingBag
         id.contains("leisure") || id.contains("ocio") || id.contains("entreten") || id.contains("cine") || id.contains("juego") -> Icons.Default.SportsEsports
         id.contains("housing") || id.contains("vivienda") || id.contains("hogar") || id.contains("alquiler") || id.contains("hipoteca") -> Icons.Default.Home

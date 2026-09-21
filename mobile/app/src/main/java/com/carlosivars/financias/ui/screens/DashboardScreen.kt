@@ -373,61 +373,71 @@ fun TransactionRowItem(tx: Transaction, categories: List<Category> = emptyList()
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+            CategoryIcon(
+                categoryIdOrName = category.id,
+                iconName = category.icon,
+                colorHex = category.colorHex,
+                categories = categories,
+                size = 44.dp,
+                iconSize = 22.dp,
+                shapeRadius = 12.dp
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
             ) {
-                CategoryIcon(
-                    categoryIdOrName = category.id,
-                    iconName = category.icon,
-                    colorHex = category.colorHex,
-                    categories = categories,
-                    size = 44.dp,
-                    iconSize = 22.dp,
-                    shapeRadius = 12.dp
+                Text(
+                    text = tx.description.lines().firstOrNull()?.trim() ?: "",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column {
-                    Text(
-                        text = tx.description,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            text = category.name,
-                            color = catColor,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
-                        Text(
-                            text = tx.date,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 12.sp
-                        )
+                Spacer(modifier = Modifier.height(3.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val displayCat = when {
+                        !tx.parentCategory.isNullOrBlank() -> "${tx.parentCategory} › ${tx.category}"
+                        !tx.subCategory.isNullOrBlank() -> "${tx.category} › ${tx.subCategory}"
+                        else -> category.name
                     }
+                    Text(
+                        text = displayCat,
+                        color = catColor,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                    Text(
+                        text = tx.date,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp,
+                        maxLines = 1
+                    )
                 }
             }
+
+            Spacer(modifier = Modifier.width(8.dp))
 
             Text(
                 text = String.format(Locale.GERMANY, "%s %,.2f €", prefix, tx.amount),
                 color = amountColor,
                 fontSize = 15.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
             )
         }
     }

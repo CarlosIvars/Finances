@@ -18,7 +18,7 @@ import {
     ShoppingBag,
     House, 
     Utensils,
-    HeartPulse, 
+    Cross, 
     CreditCard, 
     BriefcaseBusiness, 
     GraduationCap,

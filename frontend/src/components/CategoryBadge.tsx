@@ -5,7 +5,7 @@ import {
     ShoppingBag,
     House,
     Utensils,
-    HeartPulse,
+    Cross,
     CreditCard,
     BriefcaseBusiness,
     GraduationCap,
@@ -35,7 +35,7 @@ export const CATEGORY_ICONS_LIST: Array<{ value: string; icon: React.ElementType
     { value: 'local_parking', icon: CircleParking, label: 'Parking / Estacionamiento' },
     { value: 'home', icon: House, label: 'Hogar / Vivienda' },
     { value: 'sports_esports', icon: Gamepad2, label: 'Ocio / Videojuegos' },
-    { value: 'local_hospital', icon: HeartPulse, label: 'Salud / Farmacia' },
+    { value: 'local_hospital', icon: Cross, label: 'Salud / Farmacia' },
     { value: 'school', icon: GraduationCap, label: 'Educación / Cursos' },
     { value: 'checkroom', icon: Shirt, label: 'Ropa / Moda' },
     { value: 'shopping_bag', icon: ShoppingBag, label: 'Tiendas / Compras' },
@@ -64,9 +64,9 @@ export const getCategoryIconComponent = (iconName?: string | null, fallbackName?
     if (raw === 'local_parking' || raw === 'parking') return CircleParking;
     if (raw === 'home' || raw === 'house' || raw === 'vivienda') return House;
     if (raw === 'sports_esports' || raw === 'game' || raw === 'ocio' || raw === 'leisure') return Gamepad2;
-    if (raw === 'local_hospital' || raw === 'health' || raw === 'salud') return HeartPulse;
+    if (raw === 'local_hospital' || raw === 'health' || raw === 'salud' || raw === 'cross') return Cross;
     if (raw === 'school' || raw === 'education' || raw === 'educacion') return GraduationCap;
-    if (raw === 'checkroom' || raw === 'clothing' || raw === 'ropa') return Shirt;
+    if (raw === 'checkroom' || raw === 'shirt' || raw === 'clothing' || raw === 'ropa') return Shirt;
     if (raw === 'shopping_bag' || raw === 'tienda') return ShoppingBag;
     if (raw === 'subscriptions' || raw === 'tv' || raw === 'streaming') return Tv;
     if (raw === 'receipt' || raw === 'factura' || raw === 'recibo') return Receipt;
@@ -90,7 +90,7 @@ export const getCategoryIconComponent = (iconName?: string | null, fallbackName?
     if (name.includes('restauran') || name.includes('comida') || name.includes('cena') || name.includes('bar') || name.includes('alimenta')) return Utensils;
     if (name.includes('ropa') || name.includes('moda') || name.includes('zara') || name.includes('tienda')) return Shirt;
     if (name.includes('ocio') || name.includes('juego') || name.includes('cine') || name.includes('steam')) return Gamepad2;
-    if (name.includes('salud') || name.includes('farmacia') || name.includes('medic') || name.includes('dentist')) return HeartPulse;
+    if (name.includes('salud') || name.includes('farmacia') || name.includes('medic') || name.includes('dentist') || name.includes('hospital')) return Cross;
     if (name.includes('hogar') || name.includes('vivienda') || name.includes('casa') || name.includes('alquiler') || name.includes('hipoteca')) return House;
     if (name.includes('educaci') || name.includes('curso') || name.includes('colegio') || name.includes('universidad')) return GraduationCap;
     if (name.includes('suscrip') || name.includes('netflix') || name.includes('spotify') || name.includes('hbo') || name.includes('prime')) return Tv;

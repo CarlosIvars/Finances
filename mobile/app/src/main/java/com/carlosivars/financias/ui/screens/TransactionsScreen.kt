@@ -350,88 +350,97 @@ fun SwipeableTransactionItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+            CategoryIcon(
+                categoryIdOrName = category.id,
+                iconName = category.icon,
+                colorHex = category.colorHex,
+                categories = categories,
+                size = 44.dp,
+                iconSize = 22.dp,
+                shapeRadius = 12.dp
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
             ) {
-                CategoryIcon(
-                    categoryIdOrName = category.id,
-                    iconName = category.icon,
-                    colorHex = category.colorHex,
-                    categories = categories,
-                    size = 44.dp,
-                    iconSize = 22.dp,
-                    shapeRadius = 12.dp
+                Text(
+                    text = tx.description.lines().firstOrNull()?.trim() ?: "",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column {
+                Spacer(modifier = Modifier.height(3.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val displayCategory = when {
+                        !tx.parentCategory.isNullOrBlank() -> "${tx.parentCategory} › ${tx.category}"
+                        !tx.subCategory.isNullOrBlank() -> "${tx.category} › ${tx.subCategory}"
+                        else -> tx.category
+                    }
                     Text(
-                        text = tx.description,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        text = displayCategory,
+                        color = catColor,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
                         maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        val displayCategory = when {
-                            !tx.parentCategory.isNullOrBlank() -> "${tx.parentCategory} › ${tx.category}"
-                            !tx.subCategory.isNullOrBlank() -> "${tx.category} › ${tx.subCategory}"
-                            else -> tx.category
-                        }
-                        Text(
-                            text = displayCategory,
-                            color = catColor,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                    Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                    Text(
+                        text = tx.date,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp,
+                        maxLines = 1
+                    )
+                    val cardTag = tx.metadata["card"] ?: tx.metadata["card_masked"] ?: tx.metadata["card_last4"]
+                    if (cardTag != null) {
                         Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
-                        Text(
-                            text = tx.date,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 11.sp
-                        )
-                        val cardTag = tx.metadata["card"] ?: tx.metadata["card_masked"] ?: tx.metadata["card_last4"]
-                        if (cardTag != null) {
-                            Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CreditCard,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(12.dp)
-                                )
-                                Text(
-                                    text = if (cardTag.contains("••")) cardTag.substring(cardTag.indexOf("••")) else cardTag,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CreditCard,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = if (cardTag.contains("••")) cardTag.substring(cardTag.indexOf("••")) else cardTag,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1
+                            )
                         }
                     }
                 }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End
+            ) {
                 Text(
                     text = String.format(Locale.GERMANY, "%s%,.2f €", prefix, tx.amount),
                     color = amountColor,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
                 )
 
                 IconButton(

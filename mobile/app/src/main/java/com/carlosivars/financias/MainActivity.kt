@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Sync
@@ -219,8 +220,10 @@ class MainActivity : ComponentActivity() {
                                         label = {
                                             Text(
                                                 text = tab.title,
-                                                fontSize = 11.sp,
-                                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                                                fontSize = 10.sp,
+                                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                                maxLines = 1,
+                                                softWrap = false
                                             )
                                         },
                                         colors = NavigationBarItemDefaults.colors(
@@ -317,27 +320,29 @@ class MainActivity : ComponentActivity() {
                     }
 
                     FloatingActionButton(
-                            onClick = {
-                                if (!isSyncing) coroutineScope.launch {
-                                    isSyncing = true
-                                    repository.performSync()
-                                    isSyncing = false
-                                }
-                            },
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(top = 16.dp, end = 16.dp),
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.primary
-                        ) {
-                            if (isSyncing) {
-                                CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
-                            } else {
-                                Icon(Icons.Default.Sync, contentDescription = "Sincronizar ahora")
+                        onClick = {
+                            if (!isSyncing) coroutineScope.launch {
+                                isSyncing = true
+                                repository.performSync()
+                                isSyncing = false
                             }
+                        },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .statusBarsPadding()
+                            .padding(top = 8.dp, end = 16.dp),
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        if (isSyncing) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.Sync, contentDescription = "Sincronizar ahora", modifier = Modifier.size(20.dp))
                         }
                     }
                 }
+            }
 
                 // Modal Añadir Transacción
                 if (showAddTransactionDialog) {

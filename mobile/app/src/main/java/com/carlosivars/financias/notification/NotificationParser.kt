@@ -91,8 +91,8 @@ object NotificationParser {
         text: String,
         postTime: Long
     ): Transaction? {
-        val cleanText = text.trim()
-        val cleanTitle = title.trim()
+        val cleanText = text.replace(Regex("[\\r\\n]+"), " ").trim()
+        val cleanTitle = title.replace(Regex("[\\r\\n]+"), " ").trim()
         val isoDate = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(postTime))
         val id = "tx_${postTime}_${Math.abs((cleanTitle + cleanText).hashCode())}"
 
