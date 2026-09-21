@@ -30,7 +30,7 @@ fun EditBudgetDialog(
     val catColor = try {
         Color(android.graphics.Color.parseColor(initialCategory.colorHex))
     } catch (_: Exception) {
-        PrimaryAccent
+        MaterialTheme.colorScheme.primary
     }
 
     AlertDialog(
@@ -49,7 +49,7 @@ fun EditBudgetDialog(
                     text = "Presupuesto: ${initialCategory.name}",
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
-                    color = TextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         },
@@ -63,7 +63,7 @@ fun EditBudgetDialog(
                 Text(
                     text = "Indica el límite máximo mensual que planeas gastar en esta categoría.",
                     fontSize = 13.sp,
-                    color = TextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 OutlinedTextField(
@@ -77,16 +77,21 @@ fun EditBudgetDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryAccent,
-                        focusedLabelColor = PrimaryAccent
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     )
                 )
 
                 errorMessage?.let { msg ->
                     Text(
                         text = msg,
-                        color = ExpenseRed,
+                        color = MaterialTheme.colorScheme.error,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -108,19 +113,19 @@ fun EditBudgetDialog(
                         initialCategory.colorHex
                     )
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent),
-                shape = RoundedCornerShape(10.dp)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Guardar", color = Color.White, fontWeight = FontWeight.SemiBold)
+                Text("Guardar", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancelar", color = TextSecondary)
+                Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
-        containerColor = CardBackground,
-        shape = RoundedCornerShape(20.dp)
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(16.dp)
     )
 }
 

@@ -24,6 +24,7 @@ class TransactionRepository(context: Context) {
     private val db = AppDatabase.getDatabase(context)
     private val transactionDao = db.transactionDao()
     private val budgetDao = db.budgetDao()
+    private val categoryDao = db.categoryDao()
     val securePrefs = SecurePreferencesManager(context)
     val syncManager = com.carlosivars.financias.sync.SyncManager(context)
 
@@ -31,11 +32,26 @@ class TransactionRepository(context: Context) {
 
     suspend fun performSync(): com.carlosivars.financias.sync.SyncResult = syncManager.performFullSync()
 
+    val activeConflict: kotlinx.coroutines.flow.StateFlow<com.carlosivars.financias.sync.MobileSyncConflict?> = 
+        com.carlosivars.financias.sync.SyncManager.activeConflict
+
+    suspend fun resolveConflict(conflict: com.carlosivars.financias.sync.MobileSyncConflict, keepLocal: Boolean) {
+        syncManager.resolveConflict(conflict, keepLocal)
+    }
+
+    fun dismissConflict() {
+        com.carlosivars.financias.sync.SyncManager.clearConflict()
+    }
+
     val allTransactions: Flow<List<Transaction>> = transactionDao.getAllTransactions().map { entities ->
         entities.map { it.toDomain() }
     }
 
     val allBudgets: Flow<List<BudgetEntity>> = budgetDao.getAllBudgets()
+    /** Server categories take precedence; bundled values only keep first offline use usable. */
+    val allCategories: Flow<List<Category>> = categoryDao.observeAll().map { entities ->
+        entities.map { it.toDomain() }.ifEmpty { Category.ALL }
+    }
 
     suspend fun saveTransaction(transaction: Transaction, notificationHash: String): Boolean {
         val entity = TransactionEntity.fromDomain(transaction, notificationHash)
@@ -53,6 +69,7 @@ class TransactionRepository(context: Context) {
         amount: Double,
         type: TransactionType,
         category: String,
+        categoryServerId: Int? = null,
         date: String = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
     ): Boolean {
         val now = System.currentTimeMillis()
@@ -63,6 +80,7 @@ class TransactionRepository(context: Context) {
             currency = "EUR",
             type = type,
             category = category,
+            categoryServerId = categoryServerId,
             date = date,
             timestamp = now,
             source = TransactionSource.MANUAL,
@@ -88,9 +106,9 @@ class TransactionRepository(context: Context) {
         if (current.isEmpty()) {
             val defaults = listOf(
                 BudgetEntity("food", "Alimentación", 350.0, "#10B981"),
-                BudgetEntity("leisure", "Ocio & Restauración", 150.0, "#F59E0B"),
+                BudgetEntity("leisure", "Ocio", 150.0, "#22c55e"),
                 BudgetEntity("transport", "Transporte", 100.0, "#3B82F6"),
-                BudgetEntity("housing", "Hogar & Servicios", 200.0, "#8B5CF6"),
+                BudgetEntity("housing", "Hogar", 200.0, "#eab308"),
                 BudgetEntity("subscriptions", "Suscripciones", 40.0, "#6366F1")
             )
             for (b in defaults) {
@@ -102,13 +120,14 @@ class TransactionRepository(context: Context) {
     suspend fun updateCategory(
         id: String, 
         newCategory: String, 
+        categoryServerId: Int? = null,
         newSubCategory: String? = null,
         parentCategory: String? = null
     ): Boolean = withContext(Dispatchers.IO) {
         val rows = if (newSubCategory != null || parentCategory != null) {
-            transactionDao.updateCategoryAndHierarchy(id, newCategory, newSubCategory, parentCategory)
+            transactionDao.updateCategoryAndHierarchy(id, newCategory, categoryServerId, newSubCategory, parentCategory)
         } else {
-            transactionDao.updateCategory(id, newCategory)
+            transactionDao.updateCategory(id, newCategory, categoryServerId)
         }
         rows > 0
     }
@@ -210,7 +229,12 @@ class TransactionRepository(context: Context) {
     }
 
     // Comprobar conectividad con el servidor Cloud
-    suspend fun testCloudConnection(serverUrl: String, authToken: String): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+    suspend fun testCloudConnection(
+        serverUrl: String, 
+        authToken: String,
+        cfClientId: String = "",
+        cfClientSecret: String = ""
+    ): Pair<Boolean, String> = withContext(Dispatchers.IO) {
         if (serverUrl.isBlank()) {
             return@withContext Pair(false, "La URL del servidor no puede estar vacía.")
         }
@@ -224,11 +248,15 @@ class TransactionRepository(context: Context) {
 
             val url = URL(cleanUrl)
             val conn = url.openConnection() as HttpURLConnection
-            conn.connectTimeout = 4000
-            conn.readTimeout = 4000
+            conn.connectTimeout = 6000
+            conn.readTimeout = 6000
             conn.requestMethod = "GET"
             if (authToken.isNotBlank()) {
                 conn.setRequestProperty("Authorization", "Bearer $authToken")
+            }
+            if (cfClientId.isNotBlank() && cfClientSecret.isNotBlank()) {
+                conn.setRequestProperty("CF-Access-Client-Id", cfClientId)
+                conn.setRequestProperty("CF-Access-Client-Secret", cfClientSecret)
             }
 
             val responseCode = conn.responseCode

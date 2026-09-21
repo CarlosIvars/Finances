@@ -24,15 +24,23 @@ import com.carlosivars.financias.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTransactionDialog(
+    categories: List<Category>,
     onDismiss: () -> Unit,
-    onConfirm: (description: String, amount: Double, type: TransactionType, category: String) -> Unit
+    onConfirm: (description: String, amount: Double, type: TransactionType, category: Category) -> Unit
 ) {
     var type by remember { mutableStateOf(TransactionType.EXPENSE) }
     var description by remember { mutableStateOf("") }
     var amountText by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf(Category.ALL.first()) }
+    var selectedCategory by remember(categories) { mutableStateOf(categories.firstOrNull() ?: Category.ALL.first()) }
     var isCategoryDropdownOpen by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(type, categories) {
+        if (selectedCategory.isIncome != (type == TransactionType.INCOME)) {
+            selectedCategory = categories.firstOrNull { it.isIncome == (type == TransactionType.INCOME) }
+                ?: selectedCategory
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -41,7 +49,7 @@ fun AddTransactionDialog(
                 text = "Nueva Transacción",
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
@@ -96,10 +104,13 @@ fun AddTransactionDialog(
                     placeholder = { Text("0.00") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryAccent,
-                        focusedLabelColor = PrimaryAccent
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     )
                 )
 
@@ -113,10 +124,13 @@ fun AddTransactionDialog(
                     label = { Text("Concepto o Comercio") },
                     placeholder = { Text("ej. Mercadona, Restaurante, Nómina...") },
                     singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryAccent,
-                        focusedLabelColor = PrimaryAccent
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     )
                 )
 
@@ -129,6 +143,7 @@ fun AddTransactionDialog(
                         value = selectedCategory.name,
                         onValueChange = {},
                         readOnly = true,
+                        shape = RoundedCornerShape(12.dp),
                         label = { Text("Categoría") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCategoryDropdownOpen) },
                         leadingIcon = {
@@ -136,7 +151,7 @@ fun AddTransactionDialog(
                                 modifier = Modifier
                                     .size(16.dp)
                                     .background(
-                                        color = try { Color(android.graphics.Color.parseColor(selectedCategory.colorHex)) } catch (_: Exception) { PrimaryAccent },
+                                        color = try { Color(android.graphics.Color.parseColor(selectedCategory.colorHex)) } catch (_: Exception) { MaterialTheme.colorScheme.primary },
                                         shape = CircleShape
                                     )
                             )
@@ -145,8 +160,10 @@ fun AddTransactionDialog(
                             .fillMaxWidth()
                             .menuAnchor(),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryAccent,
-                            focusedLabelColor = PrimaryAccent
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            focusedLabelColor = MaterialTheme.colorScheme.primary,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                         )
                     )
 
@@ -154,7 +171,7 @@ fun AddTransactionDialog(
                         expanded = isCategoryDropdownOpen,
                         onDismissRequest = { isCategoryDropdownOpen = false }
                     ) {
-                        Category.ALL.forEach { cat ->
+                        categories.filter { it.isIncome == (type == TransactionType.INCOME) }.forEach { cat ->
                             DropdownMenuItem(
                                 text = {
                                     Row(
@@ -165,9 +182,9 @@ fun AddTransactionDialog(
                                             modifier = Modifier
                                                 .size(14.dp)
                                                 .background(
-                                                    color = try { Color(android.graphics.Color.parseColor(cat.colorHex)) } catch (_: Exception) { PrimaryAccent },
-                                                    shape = CircleShape
-                                                )
+                                                color = try { Color(android.graphics.Color.parseColor(cat.colorHex)) } catch (_: Exception) { MaterialTheme.colorScheme.primary },
+                                                shape = CircleShape
+                                            )
                                         )
                                         Text(cat.name, fontSize = 14.sp)
                                     }
@@ -203,21 +220,20 @@ fun AddTransactionDialog(
                         errorMessage = "Introduce un concepto o nombre de comercio"
                         return@Button
                     }
-                    onConfirm(description.trim(), amount, type, selectedCategory.name)
+                    onConfirm(description.trim(), amount, type, selectedCategory)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent),
-                shape = RoundedCornerShape(10.dp)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Guardar", color = Color.White, fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancelar", color = TextSecondary)
+                Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
-        containerColor = CardBackground,
-        shape = RoundedCornerShape(20.dp)
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(16.dp)
     )
 }
-

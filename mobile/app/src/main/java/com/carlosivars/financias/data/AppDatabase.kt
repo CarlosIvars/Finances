@@ -8,14 +8,15 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [TransactionEntity::class, BudgetEntity::class],
-    version = 4,
+    entities = [TransactionEntity::class, BudgetEntity::class, CategoryEntity::class],
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun transactionDao(): TransactionDao
     abstract fun budgetDao(): BudgetDao
+    abstract fun categoryDao(): CategoryDao
 
     companion object {
         @Volatile
@@ -86,6 +87,29 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** The mobile catalogue is a cache of the authenticated user's server categories. */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `transactions` ADD COLUMN `categoryServerId` INTEGER DEFAULT NULL")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `categories` (
+                        `serverId` INTEGER NOT NULL PRIMARY KEY,
+                        `name` TEXT NOT NULL,
+                        `parentServerId` INTEGER,
+                        `parentName` TEXT,
+                        `colorHex` TEXT NOT NULL,
+                        `isIncome` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `categories` ADD COLUMN `icon` TEXT NOT NULL DEFAULT 'credit_card'")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -98,7 +122,9 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_2_3,
                     MIGRATION_3_4,
                     MIGRATION_1_4,
-                    MIGRATION_2_4
+                    MIGRATION_2_4,
+                    MIGRATION_4_5,
+                    MIGRATION_5_6
                 )
                 .build()
 

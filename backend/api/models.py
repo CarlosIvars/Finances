@@ -18,6 +18,7 @@ class Category(models.Model):
     name = models.CharField(max_length=100)
     parent = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='children')
     color = models.CharField(max_length=7, default='#cccccc') # Hex color
+    icon = models.CharField(max_length=40, default='credit_card')
     is_income = models.BooleanField(default=False) # True for Income categories, False for Expense
     
     class Meta:

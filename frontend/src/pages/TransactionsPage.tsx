@@ -125,23 +125,23 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 className="text-3xl font-heading font-bold text-foreground tracking-tight">Movimientos</h2>
+                    <h2 className="text-3xl font-sans font-bold text-foreground tracking-tight">Movimientos</h2>
                     <p className="text-muted-foreground font-medium mt-1">{filteredAndSorted.length} de {transactions.length} transacciones</p>
                 </div>
             </div>
 
             {/* Filters Row */}
             <Card>
-                <div className="flex flex-wrap gap-4 items-center">
+                <div className="flex flex-wrap gap-3.5 items-center">
                     <Filter size={18} className="text-muted-foreground" />
 
                     {/* Search */}
                     <div className="relative flex-1 min-w-[200px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
                         <input
                             type="text"
                             placeholder="Buscar concepto..."
-                            className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-ring transition-colors shadow-sm"
+                            className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-xl text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -153,7 +153,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                         <select
                             value={filterMonth}
                             onChange={(e) => setFilterMonth(e.target.value)}
-                            className="appearance-none bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm shadow-sm cursor-pointer hover:border-muted-foreground/30 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                            className="appearance-none bg-background border border-border rounded-xl px-3.5 py-2 text-foreground text-sm shadow-sm cursor-pointer hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                         >
                             <option value="all">Todos los meses</option>
                             {availableMonths.map(m => {
@@ -168,7 +168,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                     <select
                         value={filterType}
                         onChange={(e) => setFilterType(e.target.value)}
-                        className="appearance-none bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm shadow-sm cursor-pointer hover:border-muted-foreground/30 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                        className="appearance-none bg-background border border-border rounded-xl px-3.5 py-2 text-foreground text-sm shadow-sm cursor-pointer hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     >
                         <option value="all">Todos los tipos</option>
                         <option value="income">Ingresos</option>
@@ -179,7 +179,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                     <select
                         value={filterCategory}
                         onChange={(e) => setFilterCategory(e.target.value)}
-                        className="appearance-none bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm shadow-sm cursor-pointer hover:border-muted-foreground/30 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                        className="appearance-none bg-background border border-border rounded-xl px-3.5 py-2 text-foreground text-sm shadow-sm cursor-pointer hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     >
                         <option value="all">Todas las categorías</option>
                         <option value="pending">⚠️ Sin categoría</option>
@@ -194,7 +194,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
             <Card noPadding className="overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-muted/30 text-xs font-semibold tracking-wider text-muted-foreground border-b border-border">
+                        <thead className="bg-secondary/50 backdrop-blur-sm text-xs font-semibold tracking-wider text-muted-foreground border-b border-border/80">
                             <tr>
                                 <th
                                     className="px-6 py-4 cursor-pointer hover:text-foreground transition-colors"
@@ -233,7 +233,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-border">
+                        <tbody className="divide-y divide-border/60">
                             {filteredAndSorted.map((t) => {
                                 const cardTag = t.metadata?.card || t.metadata?.card_masked || t.metadata?.card_last4;
                                 const hasMetadata = t.metadata && Object.keys(t.metadata).length > 0;
@@ -241,7 +241,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                 return (
                                 <tr 
                                     key={t.id} 
-                                    className="hover:bg-muted/50 transition duration-150 group cursor-pointer"
+                                    className="hover:bg-secondary/40 transition duration-150 group cursor-pointer"
                                     onClick={(e) => {
                                         // Don't trigger if clicked on select or button
                                         if ((e.target as HTMLElement).closest('select, button')) return;
@@ -256,7 +256,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                             <div className="max-w-sm truncate text-foreground font-medium group-hover:text-primary transition-colors flex items-center gap-2">
                                                 <span>{t.description}</span>
                                                 {cardTag && (
-                                                    <span className="inline-flex items-center gap-1 text-[11px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border" title={`Tarjeta: ${cardTag}`}>
+                                                    <span className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded-lg bg-secondary text-muted-foreground border border-border/70" title={`Tarjeta: ${cardTag}`}>
                                                         <CreditCard size={12} />
                                                         {cardTag.includes('••') ? cardTag.substring(cardTag.indexOf('••')) : cardTag}
                                                     </span>
@@ -273,7 +273,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                         {editingId === t.id ? (
                                             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                                                 <select
-                                                    className="appearance-none bg-background border border-border shadow-sm rounded px-2 py-1 text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                                                    className="appearance-none bg-background border border-border shadow-sm rounded-xl px-2.5 py-1 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                                                     value={selectedCategory || ''}
                                                     onChange={(e) => setSelectedCategory(Number(e.target.value))}
                                                 >
@@ -284,10 +284,10 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                                         </option>
                                                     ))}
                                                 </select>
-                                                <button onClick={() => handleCategoryChange(t.id)} className="text-emerald-400 hover:text-emerald-300">
+                                                <button onClick={() => handleCategoryChange(t.id)} className="text-emerald-500 hover:text-emerald-400 p-1">
                                                     <Check size={16} />
                                                 </button>
-                                                <button onClick={() => { setEditingId(null); setSelectedCategory(null); }} className="text-red-400 hover:text-red-300">
+                                                <button onClick={() => { setEditingId(null); setSelectedCategory(null); }} className="text-red-500 hover:text-red-400 p-1">
                                                     <X size={16} />
                                                 </button>
                                             </div>
@@ -298,9 +298,9 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                                     setEditingId(t.id); 
                                                     setSelectedCategory(t.category); 
                                                 }}
-                                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold shadow-sm cursor-pointer hover:ring-2 hover:ring-ring transition-colors ${t.category_name
-                                                        ? 'bg-accent text-accent-foreground border border-border'
-                                                        : 'bg-yellow-500/10 text-yellow-600 border border-yellow-500/20'
+                                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold shadow-sm cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all ${t.category_name
+                                                        ? 'bg-secondary/90 text-foreground border border-border/80'
+                                                        : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
                                                     }`}
                                             >
                                                 {t.parent_category_name 
@@ -309,7 +309,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                             </button>
                                         )}
                                     </td>
-                                    <td className={`px-6 py-4 text-right font-semibold tabular-nums ${t.type === 'income' ? 'text-emerald-500' : 'text-foreground'}`}>
+                                    <td className={`px-6 py-4 text-right font-semibold tabular-nums ${t.type === 'income' ? 'text-income' : 'text-foreground'}`}>
                                         {t.type === 'income' ? '+' : '-'}{Math.abs(t.amount).toFixed(2)} €
                                     </td>
                                     <td className="px-4 py-4 text-center">
@@ -318,7 +318,7 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                                 e.stopPropagation();
                                                 setDetailTransaction(t);
                                             }}
-                                            className={`p-1.5 rounded-lg transition-colors ${hasMetadata ? 'text-primary hover:bg-primary/10' : 'text-muted-foreground hover:bg-muted'}`}
+                                            className={`p-1.5 rounded-xl transition-colors ${hasMetadata ? 'text-primary hover:bg-primary/10' : 'text-muted-foreground hover:bg-secondary'}`}
                                             title="Ver detalles y metadatos de la notificación"
                                         >
                                             <Info size={16} />

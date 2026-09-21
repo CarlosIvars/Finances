@@ -385,6 +385,7 @@ class SyncViewSet(viewsets.ViewSet):
                 'parent_id': c.parent_id,
                 'parent_name': c.parent.name if c.parent else None,
                 'color': c.color,
+                'icon': c.icon,
                 'is_income': c.is_income
             }
             for c in categories
@@ -421,6 +422,14 @@ class SyncViewSet(viewsets.ViewSet):
         for tx_data in transactions_data:
             try:
                 local_id = tx_data.get('local_id')
+                category = None
+                category_id = tx_data.get('category_id')
+                if category_id:
+                    try:
+                        category = Category.objects.get(id=category_id, user=request.user)
+                    except Category.DoesNotExist:
+                        # Never attach a category belonging to another user.
+                        category = None
                 
                 # Check if we already have this transaction (by checking if a transaction
                 # with the same description, date, and amount exists)
@@ -432,10 +441,17 @@ class SyncViewSet(viewsets.ViewSet):
                 ).first()
                 
                 if existing:
-                    # Update metadata/category if provided
+                    # A local recategorisation is a real update, not a duplicate to ignore.
+                    update_fields = []
                     if tx_data.get('metadata') and not existing.metadata:
                         existing.metadata = tx_data.get('metadata')
-                        existing.save(update_fields=['metadata'])
+                        update_fields.append('metadata')
+                    if category_id and category and existing.category_id != category.id:
+                        existing.category = category
+                        existing.is_pending = False
+                        update_fields.extend(['category', 'is_pending'])
+                    if update_fields:
+                        existing.save(update_fields=update_fields)
                     created.append({
                         'local_id': local_id,
                         'server_id': existing.id,
@@ -444,14 +460,6 @@ class SyncViewSet(viewsets.ViewSet):
                     continue
                 
                 # Create new transaction
-                category = None
-                category_id = tx_data.get('category_id')
-                if category_id:
-                    try:
-                        category = Category.objects.get(id=category_id, user=request.user)
-                    except Category.DoesNotExist:
-                        pass
-                
                 transaction = Transaction.objects.create(
                     user=request.user,
                     account=account,

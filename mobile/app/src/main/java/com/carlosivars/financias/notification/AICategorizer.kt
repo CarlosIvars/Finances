@@ -145,7 +145,7 @@ object AICategorizer {
             connection.readTimeout = 6000
             connection.doOutput = true
 
-            val prompt = "Clasifica '$merchantOrConcept' en una sola palabra entre: Alimentación, Transporte, Ocio, Hogar, Salud, Suscripciones, Otros."
+            val prompt = "Clasifica '$merchantOrConcept' en una sola categoría: Alimentación, Transporte, Ocio, Hogar, Salud, Suscripciones u Otros gastos."
             val requestBody = JSONObject().apply {
                 val contents = JSONArray().apply {
                     val contentObj = JSONObject().apply {
@@ -191,4 +191,3 @@ object AICategorizer {
         }
     }
 }
-

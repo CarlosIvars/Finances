@@ -67,7 +67,7 @@ dependencies {
 
     // Security & Keystore
     implementation(libs.androidx.security.crypto)
+    implementation(libs.androidx.work.runtime.ktx)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
-

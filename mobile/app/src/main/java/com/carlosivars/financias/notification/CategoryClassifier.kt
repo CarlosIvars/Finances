@@ -48,21 +48,20 @@ object CategoryClassifier {
 
         if (isIncome) {
             for (keyword in salaryKeywords) {
-                if (lower.contains(keyword)) return "Nómina / Ingresos"
+                if (lower.contains(keyword)) return "Nómina"
             }
-            if (lower.contains("bizum")) return "Transferencias / Bizum"
-            return "Nómina / Ingresos"
+            return "Nómina"
         }
 
         if (matchesAny(lower, foodKeywords)) return "Alimentación"
         if (matchesAny(lower, transportKeywords)) return "Transporte"
-        if (matchesAny(lower, leisureKeywords)) return "Ocio & Restauración"
+        if (matchesAny(lower, leisureKeywords)) return "Ocio"
         if (matchesAny(lower, subscriptionsKeywords)) return "Suscripciones"
-        if (matchesAny(lower, housingKeywords)) return "Hogar & Servicios"
-        if (matchesAny(lower, healthKeywords)) return "Salud & Bienestar"
-        if (matchesAny(lower, transferKeywords)) return "Transferencias / Bizum"
+        if (matchesAny(lower, housingKeywords)) return "Hogar"
+        if (matchesAny(lower, healthKeywords)) return "Salud"
+        if (matchesAny(lower, transferKeywords)) return "Otros gastos"
 
-        return "Otros"
+        return "Otros gastos"
     }
 
     /**
@@ -77,8 +76,8 @@ object CategoryClassifier {
     ): String {
         val keywordResult = classify(merchantOrText, isIncome)
 
-        // Si las palabras clave ya dieron una categoría concreta (no "Otros"), la usamos directamente
-        if (keywordResult != "Otros") {
+        // Si las palabras clave ya dieron una categoría concreta, la usamos directamente.
+        if (keywordResult != "Otros gastos") {
             return keywordResult
         }
 
@@ -96,11 +95,10 @@ object CategoryClassifier {
             }
         }
 
-        return "Otros"
+        return "Otros gastos"
     }
 
     private fun matchesAny(text: String, keywords: List<String>): Boolean {
         return keywords.any { text.contains(it) }
     }
 }
-

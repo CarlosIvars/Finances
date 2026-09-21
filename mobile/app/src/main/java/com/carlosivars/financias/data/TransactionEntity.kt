@@ -21,6 +21,7 @@ data class TransactionEntity(
     val currency: String,
     val type: String, // "INCOME" o "EXPENSE"
     val category: String,
+    val categoryServerId: Int? = null,
     val subCategory: String? = null,
     val parentCategory: String? = null,
     val date: String,
@@ -52,6 +53,7 @@ data class TransactionEntity(
             currency = currency,
             type = if (type == "INCOME") TransactionType.INCOME else TransactionType.EXPENSE,
             category = category,
+            categoryServerId = categoryServerId,
             subCategory = subCategory,
             parentCategory = parentCategory,
             date = date,
@@ -81,6 +83,7 @@ data class TransactionEntity(
                 currency = domain.currency,
                 type = domain.type.name,
                 category = domain.category,
+                categoryServerId = domain.categoryServerId,
                 subCategory = domain.subCategory,
                 parentCategory = domain.parentCategory,
                 date = domain.date,

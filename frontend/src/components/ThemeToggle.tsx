@@ -25,10 +25,11 @@ export function ThemeToggle() {
     return (
         <button
             onClick={() => setIsDark(!isDark)}
-            className="p-2 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
+            className="p-2 rounded-xl bg-background/80 hover:bg-secondary text-foreground transition-all border border-border/70 shadow-sm"
             title="Cambiar tema"
+            aria-label="Cambiar tema claro/oscuro"
         >
-            {isDark ? <Sun size={20} /> : <Moon size={20} />}
+            {isDark ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-blue-500" />}
         </button>
     );
 }

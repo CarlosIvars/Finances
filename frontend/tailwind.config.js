@@ -9,7 +9,7 @@ export default {
         extend: {
             fontFamily: {
                 sans: ['Inter', 'sans-serif'],
-                heading: ['Outfit', 'sans-serif'],
+                heading: ['Inter', 'sans-serif'],
             },
             colors: {
                 border: "hsl(var(--border))",
@@ -41,11 +41,22 @@ export default {
                     DEFAULT: "hsl(var(--card))",
                     foreground: "hsl(var(--card-foreground))",
                 },
+                income: {
+                    DEFAULT: "#10b981",
+                    foreground: "#ffffff",
+                },
+                expense: {
+                    DEFAULT: "#ef4444",
+                    foreground: "#ffffff",
+                },
             },
             borderRadius: {
-                lg: "var(--radius)",
-                md: "calc(var(--radius) - 2px)",
-                sm: "calc(var(--radius) - 4px)",
+                '3xl': "calc(var(--radius) + 8px)",
+                '2xl': "var(--radius)", /* 16px */
+                xl: "calc(var(--radius) - 2px)", /* 14px */
+                lg: "calc(var(--radius) - 4px)", /* 12px */
+                md: "calc(var(--radius) - 6px)", /* 10px */
+                sm: "calc(var(--radius) - 8px)", /* 8px */
             },
         },
     },

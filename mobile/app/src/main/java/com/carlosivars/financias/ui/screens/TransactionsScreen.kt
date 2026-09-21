@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.carlosivars.financias.model.Category
 import com.carlosivars.financias.model.Transaction
 import com.carlosivars.financias.model.TransactionType
+import com.carlosivars.financias.ui.components.CategoryIcon
 import com.carlosivars.financias.ui.theme.*
 import java.util.Locale
 
@@ -28,9 +29,10 @@ import java.util.Locale
 @Composable
 fun TransactionsScreen(
     transactions: List<Transaction>,
+    categories: List<Category>,
     onAddTransactionClick: () -> Unit,
     onDeleteTransaction: (String) -> Unit,
-    onRecategorizeTransaction: (transactionId: String, newCategory: String) -> Unit = { _, _ -> }
+    onRecategorizeTransaction: (transactionId: String, newCategory: Category) -> Unit = { _, _ -> }
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedTypeFilter by remember { mutableStateOf<TransactionType?>(null) }
@@ -54,11 +56,11 @@ fun TransactionsScreen(
     }
 
     Scaffold(
-        containerColor = DarkBackground,
+        containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onAddTransactionClick,
-                containerColor = PrimaryAccent,
+                containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.padding(bottom = 70.dp)
@@ -85,13 +87,13 @@ fun TransactionsScreen(
                     Column {
                         Text(
                             text = "Transacciones",
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "${filteredTransactions.size} de ${transactions.size} movimientos",
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 13.sp
                         )
                     }
@@ -105,22 +107,22 @@ fun TransactionsScreen(
                     onValueChange = { searchQuery = it },
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text("Buscar por comercio, concepto o importe...", fontSize = 14.sp) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Close, contentDescription = "Borrar", tint = TextSecondary)
+                                Icon(Icons.Default.Close, contentDescription = "Borrar", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = CardBackground,
-                        unfocusedContainerColor = CardBackground,
-                        focusedBorderColor = PrimaryAccent,
-                        unfocusedBorderColor = CardBorder,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     ),
                     singleLine = true
                 )
@@ -139,8 +141,8 @@ fun TransactionsScreen(
                         onClick = { selectedTypeFilter = null },
                         label = { Text("Todos") },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = PrimaryAccent.copy(alpha = 0.2f),
-                            selectedLabelColor = PrimaryAccent
+                            selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            selectedLabelColor = MaterialTheme.colorScheme.primary
                         )
                     )
 
@@ -178,12 +180,12 @@ fun TransactionsScreen(
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Category.ALL.forEach { cat ->
+                    categories.forEach { cat ->
                         val isSelected = selectedCategoryFilter.equals(cat.name, ignoreCase = true)
                         val catColor = try {
                             Color(android.graphics.Color.parseColor(cat.colorHex))
                         } catch (_: Exception) {
-                            PrimaryAccent
+                            MaterialTheme.colorScheme.primary
                         }
 
                         FilterChip(
@@ -206,8 +208,9 @@ fun TransactionsScreen(
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = CardBackground),
-                        shape = RoundedCornerShape(16.dp)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(16.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
                     ) {
                         Column(
                             modifier = Modifier
@@ -218,20 +221,20 @@ fun TransactionsScreen(
                             Icon(
                                 imageVector = Icons.Default.SearchOff,
                                 contentDescription = null,
-                                tint = TextSecondary.copy(alpha = 0.4f),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                 modifier = Modifier.size(48.dp)
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
                                 text = "Sin resultados coincidentes",
-                                color = TextPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 15.sp
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "Prueba a cambiar el texto de búsqueda o los filtros seleccionados.",
-                                color = TextSecondary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 13.sp,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
@@ -271,6 +274,7 @@ fun TransactionsScreen(
     // Diálogo para recategorizar movimiento
     transactionToRecategorize?.let { tx ->
         com.carlosivars.financias.ui.components.RecategorizeDialog(
+            categories = categories,
             currentCategory = tx.category,
             transactionDescription = tx.description,
             onCategorySelected = { newCat ->
@@ -285,11 +289,11 @@ fun TransactionsScreen(
     transactionToDelete?.let { tx ->
         AlertDialog(
             onDismissRequest = { transactionToDelete = null },
-            title = { Text("Eliminar movimiento", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("Eliminar movimiento", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
                     "¿Deseas eliminar '${tx.description}' (${String.format(Locale.GERMANY, "%.2f €", tx.amount)})?",
-                    color = TextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             confirmButton = {
@@ -298,17 +302,18 @@ fun TransactionsScreen(
                         onDeleteTransaction(tx.id)
                         transactionToDelete = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = ExpenseRed)
+                    colors = ButtonDefaults.buttonColors(containerColor = ExpenseRed),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Eliminar", color = Color.White)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { transactionToDelete = null }) {
-                    Text("Cancelar", color = TextSecondary)
+                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
-            containerColor = CardBackground,
+            containerColor = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(16.dp)
         )
     }
@@ -328,15 +333,16 @@ fun SwipeableTransactionItem(
     val catColor = try {
         Color(android.graphics.Color.parseColor(category.colorHex))
     } catch (_: Exception) {
-        PrimaryAccent
+        MaterialTheme.colorScheme.primary
     }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        shape = RoundedCornerShape(16.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
     ) {
         Row(
             modifier = Modifier
@@ -349,33 +355,21 @@ fun SwipeableTransactionItem(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.weight(1f)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .background(catColor.copy(alpha = 0.15f), shape = RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (isIncome) "💰" else when (category.id) {
-                            "food" -> "🛒"
-                            "transport" -> "⛽"
-                            "leisure" -> "🍔"
-                            "housing" -> "🏠"
-                            "health" -> "💊"
-                            "subscriptions" -> "📱"
-                            "transfers" -> "💸"
-                            else -> "💳"
-                        },
-                        fontSize = 20.sp
-                    )
-                }
+                CategoryIcon(
+                    categoryIdOrName = if (isIncome) "salary" else category.id,
+                    iconName = if (isIncome) "payments" else category.icon,
+                    colorHex = if (isIncome) "#10B981" else category.colorHex,
+                    size = 44.dp,
+                    iconSize = 22.dp,
+                    shapeRadius = 12.dp
+                )
 
                 Spacer(modifier = Modifier.width(12.dp))
 
                 Column {
                     Text(
                         text = tx.description,
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -397,21 +391,32 @@ fun SwipeableTransactionItem(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
                         )
-                        Text("•", color = TextSecondary, fontSize = 10.sp)
+                        Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                         Text(
                             text = tx.date,
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp
                         )
                         val cardTag = tx.metadata["card"] ?: tx.metadata["card_masked"] ?: tx.metadata["card_last4"]
                         if (cardTag != null) {
-                            Text("•", color = TextSecondary, fontSize = 10.sp)
-                            Text(
-                                text = if (cardTag.contains("••")) "💳 " + cardTag.substring(cardTag.indexOf("••")) else "💳 $cardTag",
-                                color = TextSecondary,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
+                            Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CreditCard,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = if (cardTag.contains("••")) cardTag.substring(cardTag.indexOf("••")) else cardTag,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                         }
                     }
                 }
@@ -432,7 +437,7 @@ fun SwipeableTransactionItem(
                     Icon(
                         Icons.Default.DeleteOutline,
                         contentDescription = "Eliminar",
-                        tint = TextSecondary.copy(alpha = 0.6f),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -440,4 +445,3 @@ fun SwipeableTransactionItem(
         }
     }
 }
-

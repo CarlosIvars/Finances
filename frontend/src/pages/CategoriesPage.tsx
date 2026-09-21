@@ -7,7 +7,7 @@ export const CategoriesPage: React.FC = () => {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 className="text-3xl font-heading font-bold text-foreground tracking-tight flex items-center gap-3">
+                    <h2 className="text-3xl font-sans font-bold text-foreground tracking-tight flex items-center gap-3">
                         <div className="p-2 bg-primary/10 rounded-xl">
                             <FolderTree className="text-primary w-6 h-6" />
                         </div>

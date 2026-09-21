@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.carlosivars.financias.model.Category
 import com.carlosivars.financias.model.Transaction
 import com.carlosivars.financias.model.TransactionType
+import com.carlosivars.financias.ui.components.CategoryIcon
 import com.carlosivars.financias.ui.theme.*
 import java.util.Locale
 
@@ -46,23 +47,22 @@ fun AnalyticsScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground)
             .padding(horizontal = 20.dp),
         contentPadding = PaddingValues(top = 20.dp, bottom = 100.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Header
         item {
             Column {
                 Text(
                     text = "Análisis Financiero",
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = "Distribución y desglose de tus gastos",
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp
                 )
             }
@@ -72,8 +72,9 @@ fun AnalyticsScreen(
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = CardBackground),
-                shape = RoundedCornerShape(20.dp)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
             ) {
                 Row(
                     modifier = Modifier
@@ -83,7 +84,7 @@ fun AnalyticsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Gasto Total Acumulado", color = TextSecondary, fontSize = 13.sp)
+                        Text("Gasto Total Acumulado", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = String.format(Locale.GERMANY, "%,.2f €", totalExpense),
@@ -119,15 +120,16 @@ fun AnalyticsScreen(
                 // Top categoría
                 Card(
                     modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    shape = RoundedCornerShape(16.dp)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Mayor Gasto", color = TextSecondary, fontSize = 12.sp)
+                        Text("Mayor Gasto", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = topCategory?.first ?: "Sin datos",
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -136,7 +138,7 @@ fun AnalyticsScreen(
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = topCategory?.let { String.format(Locale.GERMANY, "%,.2f €", it.second) } ?: "-",
-                            color = PrimaryAccent,
+                            color = MaterialTheme.colorScheme.primary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -146,22 +148,23 @@ fun AnalyticsScreen(
                 // Total operaciones
                 Card(
                     modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    shape = RoundedCornerShape(16.dp)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Operaciones", color = TextSecondary, fontSize = 12.sp)
+                        Text("Operaciones", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "${transactions.size}",
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "${expenseTransactions.size} gastos, ${transactions.size - expenseTransactions.size} ingresos",
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp
                         )
                     }
@@ -173,7 +176,7 @@ fun AnalyticsScreen(
         item {
             Text(
                 text = "Gastos por Categoría",
-                color = TextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -184,8 +187,9 @@ fun AnalyticsScreen(
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    shape = RoundedCornerShape(16.dp)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
                 ) {
                     Column(
                         modifier = Modifier
@@ -195,7 +199,7 @@ fun AnalyticsScreen(
                     ) {
                         Text(
                             text = "Aún no hay gastos para analizar",
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 14.sp
                         )
                     }
@@ -207,15 +211,16 @@ fun AnalyticsScreen(
                 val catColor = try {
                     Color(android.graphics.Color.parseColor(category.colorHex))
                 } catch (_: Exception) {
-                    PrimaryAccent
+                    MaterialTheme.colorScheme.primary
                 }
                 val percentage = if (totalExpense > 0) (amount / totalExpense).toFloat() else 0f
                 val animatedProgress by animateFloatAsState(targetValue = percentage, label = "progress")
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    shape = RoundedCornerShape(16.dp)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
                 ) {
                     Column(
                         modifier = Modifier
@@ -231,37 +236,24 @@ fun AnalyticsScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .background(catColor.copy(alpha = 0.15f), shape = RoundedCornerShape(10.dp)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = when (category.id) {
-                                            "food" -> "🛒"
-                                            "transport" -> "⛽"
-                                            "leisure" -> "🍔"
-                                            "housing" -> "🏠"
-                                            "health" -> "💊"
-                                            "subscriptions" -> "📱"
-                                            "transfers" -> "💸"
-                                            else -> "💳"
-                                        },
-                                        fontSize = 18.sp
-                                    )
-                                }
+                                CategoryIcon(
+                                    categoryIdOrName = category.id,
+                                    colorHex = category.colorHex,
+                                    size = 36.dp,
+                                    iconSize = 18.dp,
+                                    shapeRadius = 10.dp
+                                )
 
                                 Column {
                                     Text(
                                         text = category.name,
-                                        color = TextPrimary,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         fontWeight = FontWeight.SemiBold,
                                         fontSize = 15.sp
                                     )
                                     Text(
                                         text = String.format(Locale.GERMANY, "%.1f %% del total", percentage * 100),
-                                        color = TextSecondary,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 12.sp
                                     )
                                 }
@@ -269,7 +261,7 @@ fun AnalyticsScreen(
 
                             Text(
                                 text = String.format(Locale.GERMANY, "%,.2f €", amount),
-                                color = TextPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
@@ -285,7 +277,7 @@ fun AnalyticsScreen(
                                 .height(8.dp)
                                 .clip(RoundedCornerShape(4.dp)),
                             color = catColor,
-                            trackColor = CardBorder
+                            trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                         )
                     }
                 }

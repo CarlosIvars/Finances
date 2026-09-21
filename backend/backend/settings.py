@@ -15,11 +15,13 @@ from datetime import timedelta
 from dotenv import load_dotenv
 import os
 
-# Load environment variables
-load_dotenv()
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from backend/.env or root .env regardless of working directory
+load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR.parent / '.env')
+load_dotenv()
 
 
 # Quick-start development settings - unsuitable for production
@@ -31,7 +33,19 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-only-insecure-key-change-in-produ
 # SECURITY: Debug mode from environment variable
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.118']
+# Allowed hosts: configurable via env var, defaults include local hosts and Cloudflare tunnels
+_allowed_hosts_env = os.environ.get('ALLOWED_HOSTS')
+if _allowed_hosts_env:
+    ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(',') if h.strip()]
+else:
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.118', '.trycloudflare.com']
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip() for origin in os.environ.get(
+        'CSRF_TRUSTED_ORIGINS',
+        'http://localhost:5173,https://*.trycloudflare.com'
+    ).split(',') if origin.strip()
+]
 
 
 # Application definition

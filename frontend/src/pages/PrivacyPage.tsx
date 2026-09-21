@@ -111,10 +111,12 @@ export function PrivacyPage({ onLogout }: PrivacyPageProps) {
         <div className="max-w-3xl mx-auto space-y-6">
             {/* Header */}
             <div className="flex items-center gap-3">
-                <Shield className="text-blue-400" size={28} />
+                <div className="p-2.5 bg-primary/10 text-primary rounded-xl">
+                    <Shield size={24} />
+                </div>
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Privacidad y Datos</h1>
-                    <p className="text-slate-400 text-sm">
+                    <h1 className="text-2xl font-bold text-foreground">Privacidad y Datos</h1>
+                    <p className="text-muted-foreground text-sm">
                         Gestiona tus consentimientos, exporta tus datos o elimina tu cuenta (RGPD)
                     </p>
                 </div>
@@ -122,9 +124,9 @@ export function PrivacyPage({ onLogout }: PrivacyPageProps) {
 
             {/* Message */}
             {message && (
-                <div className={`flex items-center gap-2 p-3 rounded-lg text-sm ${message.type === 'success'
-                    ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
-                    : 'bg-red-500/10 border border-red-500/20 text-red-400'
+                <div className={`flex items-center gap-2 p-3.5 rounded-xl text-sm border ${message.type === 'success'
+                    ? 'bg-income/10 border-income/20 text-income'
+                    : 'bg-destructive/10 border-destructive/20 text-destructive'
                     }`}>
                     {message.type === 'success' ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
                     {message.text}
@@ -133,50 +135,50 @@ export function PrivacyPage({ onLogout }: PrivacyPageProps) {
 
             {/* Consent Management */}
             <Card>
-                <div className="flex items-center gap-2 mb-4">
-                    <ToggleRight className="text-blue-400" size={20} />
-                    <h2 className="text-lg font-semibold text-white">Consentimientos</h2>
+                <div className="flex items-center gap-2.5 mb-4">
+                    <ToggleRight className="text-primary" size={20} />
+                    <h2 className="text-lg font-semibold text-foreground">Consentimientos</h2>
                 </div>
-                <p className="text-slate-400 text-sm mb-5">
+                <p className="text-muted-foreground text-sm mb-5">
                     Controla qué procesamiento de datos permites. Las funcionalidades esenciales
                     (almacenamiento y clasificación) son necesarias para usar la app.
                 </p>
 
                 <div className="space-y-4">
                     {/* Essential - always on */}
-                    <div className="flex items-start justify-between p-4 rounded-xl bg-slate-800/30 border border-slate-700/50">
+                    <div className="flex items-start justify-between p-4 rounded-xl bg-secondary/40 border border-border/60">
                         <div className="flex-1 mr-4">
                             <div className="flex items-center gap-2">
-                                <span className="font-medium text-white">Funcionalidades esenciales</span>
-                                <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full">Obligatorio</span>
+                                <span className="font-medium text-foreground">Funcionalidades esenciales</span>
+                                <span className="text-xs bg-primary/15 text-primary px-2.5 py-0.5 rounded-full font-medium">Obligatorio</span>
                             </div>
-                            <p className="text-slate-400 text-sm mt-1">
+                            <p className="text-muted-foreground text-sm mt-1">
                                 Almacenamiento y clasificación de transacciones. Necesario para el funcionamiento de la app.
                             </p>
                         </div>
-                        <button disabled className="mt-1">
-                            <ToggleRight size={28} className="text-blue-500 opacity-50" />
+                        <button disabled className="mt-1 opacity-50 cursor-not-allowed">
+                            <ToggleRight size={28} className="text-primary" />
                         </button>
                     </div>
 
                     {/* Dynamic consent types */}
                     {consentData?.available_types.map(type => (
-                        <div key={type.key} className="flex items-start justify-between p-4 rounded-xl bg-slate-800/30 border border-slate-700/50 hover:border-slate-600/50 transition-colors">
+                        <div key={type.key} className="flex items-start justify-between p-4 rounded-xl bg-secondary/40 border border-border/60 hover:border-border transition-colors">
                             <div className="flex-1 mr-4">
-                                <span className="font-medium text-white">{type.label}</span>
-                                <p className="text-slate-400 text-sm mt-1">{type.description}</p>
+                                <span className="font-medium text-foreground">{type.label}</span>
+                                <p className="text-muted-foreground text-sm mt-1">{type.description}</p>
                             </div>
-                            <button onClick={() => handleToggleConsent(type.key)} className="mt-1">
+                            <button onClick={() => handleToggleConsent(type.key)} className="mt-1 focus:outline-none">
                                 {consents[type.key]
-                                    ? <ToggleRight size={28} className="text-blue-500" />
-                                    : <ToggleLeft size={28} className="text-slate-500" />
+                                    ? <ToggleRight size={28} className="text-primary transition-colors" />
+                                    : <ToggleLeft size={28} className="text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
                                 }
                             </button>
                         </div>
                     ))}
                 </div>
 
-                <div className="mt-5 flex justify-end">
+                <div className="mt-6 flex justify-end">
                     <Button onClick={handleSaveConsents} loading={saving}>
                         Guardar preferencias
                     </Button>
@@ -186,24 +188,24 @@ export function PrivacyPage({ onLogout }: PrivacyPageProps) {
             {/* Profiling Info (Art. 22) */}
             {profilingInfo && (
                 <Card>
-                    <div className="flex items-center gap-2 mb-4">
-                        <Info className="text-blue-400" size={20} />
-                        <h2 className="text-lg font-semibold text-white">Procesamiento automatizado</h2>
+                    <div className="flex items-center gap-2.5 mb-4">
+                        <Info className="text-primary" size={20} />
+                        <h2 className="text-lg font-semibold text-foreground">Procesamiento automatizado</h2>
                     </div>
-                    <p className="text-slate-400 text-sm mb-4">{profilingInfo.description}</p>
+                    <p className="text-muted-foreground text-sm mb-4">{profilingInfo.description}</p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
-                            <h3 className="text-sm font-medium text-emerald-400 mb-2">✅ Datos utilizados</h3>
-                            <ul className="text-slate-400 text-sm space-y-1">
+                        <div className="p-4 rounded-xl bg-income/5 border border-income/20">
+                            <h3 className="text-sm font-medium text-income mb-2">✅ Datos utilizados</h3>
+                            <ul className="text-muted-foreground text-sm space-y-1">
                                 {profilingInfo.data_used.map((d: string, i: number) => (
                                     <li key={i}>• {d}</li>
                                 ))}
                             </ul>
                         </div>
-                        <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/10">
-                            <h3 className="text-sm font-medium text-red-400 mb-2">🚫 Datos NO utilizados</h3>
-                            <ul className="text-slate-400 text-sm space-y-1">
+                        <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/20">
+                            <h3 className="text-sm font-medium text-destructive mb-2">🚫 Datos NO utilizados</h3>
+                            <ul className="text-muted-foreground text-sm space-y-1">
                                 {profilingInfo.data_NOT_used.map((d: string, i: number) => (
                                     <li key={i}>• {d}</li>
                                 ))}
@@ -211,7 +213,7 @@ export function PrivacyPage({ onLogout }: PrivacyPageProps) {
                         </div>
                     </div>
 
-                    <p className="text-slate-500 text-xs mt-3 italic">
+                    <p className="text-muted-foreground/70 text-xs mt-3 italic">
                         {profilingInfo.impact}
                     </p>
                 </Card>
@@ -219,11 +221,11 @@ export function PrivacyPage({ onLogout }: PrivacyPageProps) {
 
             {/* Data Export (Art. 15 + Art. 20) */}
             <Card>
-                <div className="flex items-center gap-2 mb-4">
-                    <Download className="text-blue-400" size={20} />
-                    <h2 className="text-lg font-semibold text-white">Exportar mis datos</h2>
+                <div className="flex items-center gap-2.5 mb-4">
+                    <Download className="text-primary" size={20} />
+                    <h2 className="text-lg font-semibold text-foreground">Exportar mis datos</h2>
                 </div>
-                <p className="text-slate-400 text-sm mb-4">
+                <p className="text-muted-foreground text-sm mb-4">
                     Descarga una copia completa de todos tus datos personales en formato JSON.
                     Incluye transacciones, categorías, presupuestos y consentimientos.
                 </p>
@@ -235,12 +237,12 @@ export function PrivacyPage({ onLogout }: PrivacyPageProps) {
 
             {/* Account Deletion (Art. 17) */}
             <Card>
-                <div className="flex items-center gap-2 mb-4">
-                    <Trash2 className="text-red-400" size={20} />
-                    <h2 className="text-lg font-semibold text-white">Eliminar mi cuenta</h2>
+                <div className="flex items-center gap-2.5 mb-4">
+                    <Trash2 className="text-destructive" size={20} />
+                    <h2 className="text-lg font-semibold text-foreground">Eliminar mi cuenta</h2>
                 </div>
-                <p className="text-slate-400 text-sm mb-4">
-                    Esto eliminará permanentemente tu cuenta y <strong className="text-red-400">todos tus datos</strong>:
+                <p className="text-muted-foreground text-sm mb-4">
+                    Esto eliminará permanentemente tu cuenta y <strong className="text-destructive font-semibold">todos tus datos</strong>:
                     transacciones, categorías, presupuestos, archivos subidos e insights generados.
                     Esta acción no se puede deshacer.
                 </p>
@@ -248,14 +250,14 @@ export function PrivacyPage({ onLogout }: PrivacyPageProps) {
                 {!showDeleteConfirm ? (
                     <Button
                         onClick={() => setShowDeleteConfirm(true)}
-                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20"
+                        variant="danger"
                     >
                         <Trash2 size={16} />
                         Quiero eliminar mi cuenta
                     </Button>
                 ) : (
-                    <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/20 space-y-3">
-                        <div className="flex items-center gap-2 text-red-400 font-medium">
+                    <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/20 space-y-3">
+                        <div className="flex items-center gap-2 text-destructive font-medium text-sm">
                             <AlertTriangle size={16} />
                             ¿Estás seguro? Escribe ELIMINAR para confirmar
                         </div>
@@ -264,14 +266,14 @@ export function PrivacyPage({ onLogout }: PrivacyPageProps) {
                             value={deleteText}
                             onChange={(e) => setDeleteText(e.target.value)}
                             placeholder="Escribe ELIMINAR"
-                            className="w-full px-4 py-2 bg-slate-800/50 border border-red-500/30 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-red-500"
+                            className="w-full px-4 py-2 bg-background border border-destructive/40 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-destructive/30"
                         />
                         <div className="flex gap-3">
                             <Button
                                 onClick={handleDeleteAccount}
                                 loading={deleting}
                                 disabled={deleteText !== 'ELIMINAR'}
-                                className="bg-red-600 hover:bg-red-700 text-white disabled:opacity-30"
+                                variant="danger"
                             >
                                 Confirmar eliminación
                             </Button>
@@ -287,9 +289,9 @@ export function PrivacyPage({ onLogout }: PrivacyPageProps) {
             </Card>
 
             {/* Legal notice */}
-            <div className="text-center text-slate-500 text-xs py-4 space-y-1">
+            <div className="text-center text-muted-foreground text-xs py-4 space-y-1">
                 <p>Tus derechos RGPD: acceso, rectificación, supresión, portabilidad y oposición.</p>
-                <p>Para ejercer cualquier derecho, contacta: <span className="text-slate-400">privacidad@financias.app</span></p>
+                <p>Para ejercer cualquier derecho, contacta: <span className="text-foreground font-medium">privacidad@financias.app</span></p>
             </div>
         </div>
     );

@@ -155,6 +155,7 @@ export interface Category {
     id: number;
     name: string;
     color: string;
+    icon: string;
     is_income: boolean;
     parent: number | null;
     parent_name?: string | null;
@@ -175,6 +176,7 @@ export const getCategoriesTree = async (): Promise<Category[]> => {
 export const createCategory = async (data: {
     name: string;
     color?: string;
+    icon?: string;
     is_income?: boolean;
     parent?: number | null;
 }): Promise<Category> => {
@@ -184,7 +186,7 @@ export const createCategory = async (data: {
 
 export const updateCategory = async (
     id: number,
-    data: Partial<{ name: string; color: string; is_income: boolean; parent: number | null }>
+    data: Partial<{ name: string; color: string; icon: string; is_income: boolean; parent: number | null }>
 ): Promise<Category> => {
     const response = await api.patch(`/categories/${id}/`, data);
     return response.data;

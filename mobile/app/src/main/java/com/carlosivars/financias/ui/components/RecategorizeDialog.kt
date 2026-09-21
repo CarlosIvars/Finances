@@ -23,13 +23,14 @@ import com.carlosivars.financias.ui.theme.*
 
 @Composable
 fun RecategorizeDialog(
+    categories: List<Category>,
     currentCategory: String,
     transactionDescription: String,
-    onCategorySelected: (String) -> Unit,
+    onCategorySelected: (Category) -> Unit,
     onDismiss: () -> Unit
 ) {
     var expandedParentId by remember { mutableStateOf<String?>(null) }
-    val rootCategories = remember { Category.getRootCategories() }
+    val rootCategories = remember(categories) { categories.filter { it.parentId == null } }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -37,14 +38,14 @@ fun RecategorizeDialog(
             Column {
                 Text(
                     text = "Seleccionar Categoría",
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = transactionDescription,
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp,
                     maxLines = 1
                 )
@@ -62,9 +63,9 @@ fun RecategorizeDialog(
                     val catColor = try {
                         Color(android.graphics.Color.parseColor(rootCat.colorHex))
                     } catch (_: Exception) {
-                        PrimaryAccent
+                        MaterialTheme.colorScheme.primary
                     }
-                    val subcategories = Category.getSubcategories(rootCat.id)
+                    val subcategories = categories.filter { it.parentId == rootCat.id }
                     val isExpanded = expandedParentId == rootCat.id
 
                     Column(
@@ -73,12 +74,12 @@ fun RecategorizeDialog(
                     ) {
                         // Root category row
                         Surface(
-                            color = if (isCurrentRoot) catColor.copy(alpha = 0.25f) else DarkSurface,
+                            color = if (isCurrentRoot) catColor.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                             shape = RoundedCornerShape(12.dp),
                             border = if (isCurrentRoot) CardDefaults.outlinedCardBorder().copy(
                                 brush = androidx.compose.ui.graphics.SolidColor(catColor)
                             ) else CardDefaults.outlinedCardBorder().copy(
-                                brush = androidx.compose.ui.graphics.SolidColor(CardBorder)
+                                brush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -86,7 +87,7 @@ fun RecategorizeDialog(
                                     if (subcategories.isNotEmpty()) {
                                         expandedParentId = if (isExpanded) null else rootCat.id
                                     } else {
-                                        onCategorySelected(rootCat.name)
+                                        onCategorySelected(rootCat)
                                     }
                                 }
                         ) {
@@ -99,38 +100,24 @@ fun RecategorizeDialog(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .background(catColor.copy(alpha = 0.2f), shape = RoundedCornerShape(8.dp)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = when (rootCat.id) {
-                                                "food" -> "🛒"
-                                                "transport" -> "⛽"
-                                                "leisure" -> "🍔"
-                                                "housing" -> "🏠"
-                                                "health" -> "💊"
-                                                "subscriptions" -> "📱"
-                                                "transfers" -> "💸"
-                                                "salary" -> "💰"
-                                                else -> "💳"
-                                            },
-                                            fontSize = 16.sp
-                                        )
-                                    }
+                                    CategoryIcon(
+                                        categoryIdOrName = rootCat.id,
+                                        colorHex = rootCat.colorHex,
+                                        size = 32.dp,
+                                        iconSize = 16.dp,
+                                        shapeRadius = 8.dp
+                                    )
                                     Column {
                                         Text(
                                             text = rootCat.name,
-                                            color = if (isCurrentRoot) catColor else TextPrimary,
+                                            color = if (isCurrentRoot) catColor else MaterialTheme.colorScheme.onSurface,
                                             fontSize = 14.sp,
                                             fontWeight = FontWeight.SemiBold
                                         )
                                         if (subcategories.isNotEmpty()) {
                                             Text(
                                                 text = "${subcategories.size} subcategorías",
-                                                color = TextSecondary,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 fontSize = 11.sp
                                             )
                                         }
@@ -147,7 +134,7 @@ fun RecategorizeDialog(
                                         Icon(
                                             Icons.Default.ChevronRight,
                                             contentDescription = null,
-                                            tint = TextSecondary,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.rotate(if (isExpanded) 90f else 0f)
                                         )
                                     }
@@ -159,16 +146,16 @@ fun RecategorizeDialog(
                         if (isExpanded && subcategories.isNotEmpty()) {
                             // Opción para seleccionar categoría padre directamente
                             Surface(
-                                color = DarkSurface.copy(alpha = 0.6f),
-                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(start = 20.dp)
-                                    .clickable { onCategorySelected(rootCat.name) }
+                                .clickable { onCategorySelected(rootCat) }
                             ) {
                                 Text(
                                     text = "› Categoría general: ${rootCat.name}",
-                                    color = PrimaryAccent,
+                                    color = MaterialTheme.colorScheme.primary,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
@@ -178,15 +165,15 @@ fun RecategorizeDialog(
                             subcategories.forEach { sub ->
                                 val isCurrentSub = sub.name.equals(currentCategory, ignoreCase = true)
                                 Surface(
-                                    color = if (isCurrentSub) catColor.copy(alpha = 0.2f) else DarkSurface.copy(alpha = 0.6f),
-                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isCurrentSub) catColor.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                    shape = RoundedCornerShape(10.dp),
                                     border = if (isCurrentSub) CardDefaults.outlinedCardBorder().copy(
                                         brush = androidx.compose.ui.graphics.SolidColor(catColor)
                                     ) else null,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(start = 20.dp)
-                                        .clickable { onCategorySelected(sub.name) }
+                                        .clickable { onCategorySelected(sub) }
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -201,7 +188,7 @@ fun RecategorizeDialog(
                                         )
                                         Text(
                                             text = sub.name,
-                                            color = if (isCurrentSub) catColor else TextPrimary,
+                                            color = if (isCurrentSub) catColor else MaterialTheme.colorScheme.onSurface,
                                             fontSize = 13.sp,
                                             fontWeight = if (isCurrentSub) FontWeight.Bold else FontWeight.Normal
                                         )
@@ -216,10 +203,10 @@ fun RecategorizeDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancelar", color = TextSecondary)
+                Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
-        containerColor = CardBackground,
-        shape = RoundedCornerShape(18.dp)
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(16.dp)
     )
 }

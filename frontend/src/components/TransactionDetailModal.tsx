@@ -65,15 +65,15 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-card border border-border w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="glass-card border border-border/80 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                 {/* Header */}
-                <div className="p-6 border-b border-border flex items-center justify-between bg-muted/20">
+                <div className="p-6 border-b border-border/60 flex items-center justify-between bg-muted/10">
                     <div className="flex items-center gap-3">
-                        <div className={`p-3 rounded-xl ${isIncome ? 'bg-emerald-500/10 text-emerald-500' : 'bg-primary/10 text-primary'}`}>
+                        <div className={`p-3 rounded-2xl ${isIncome ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-primary/10 text-primary border border-primary/20'}`}>
                             <CreditCard className="w-6 h-6" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-heading font-bold text-foreground line-clamp-1">
+                            <h2 className="text-xl font-sans font-bold text-foreground line-clamp-1">
                                 {transaction.description}
                             </h2>
                             <p className="text-xs text-muted-foreground mt-0.5">
@@ -83,7 +83,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent transition-colors"
+                        className="p-2 text-muted-foreground hover:text-foreground rounded-xl hover:bg-secondary transition-colors"
                         title="Cerrar"
                     >
                         <X size={20} />
@@ -93,16 +93,16 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                 {/* Body Content */}
                 <div className="p-6 overflow-y-auto space-y-6">
                     {/* Amount & Classification Banner */}
-                    <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-muted/40 border border-border">
+                    <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-secondary/40 border border-border/80">
                         <div>
                             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Importe</span>
-                            <div className={`text-3xl font-extrabold tabular-nums ${isIncome ? 'text-emerald-500' : 'text-foreground'}`}>
+                            <div className={`text-3xl font-sans font-bold tabular-nums ${isIncome ? 'text-income' : 'text-foreground'}`}>
                                 {isIncome ? '+' : '-'}{Math.abs(parseFloat(transaction.amount)).toFixed(2)} €
                             </div>
                         </div>
                         <div className="flex flex-col items-end gap-1.5">
                             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tipo de Movimiento</span>
-                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${isIncome ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30' : 'bg-primary/15 text-primary border border-primary/30'}`}>
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${isIncome ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' : 'bg-primary/15 text-primary border border-primary/30'}`}>
                                 {isIncome ? 'Ingreso' : 'Gasto'}
                             </span>
                         </div>

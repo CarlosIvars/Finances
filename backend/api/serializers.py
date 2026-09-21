@@ -8,7 +8,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ['id', 'name', 'parent', 'parent_name', 'color', 'is_income', 'subcategories']
+        fields = ['id', 'name', 'parent', 'parent_name', 'color', 'icon', 'is_income', 'subcategories']
         # RGPD: 'user' field excluded — never expose user ID to client
 
     def get_subcategories(self, obj):
@@ -176,7 +176,7 @@ class RegisterSerializer(serializers.Serializer):
 
         # Create default categories for the new user
         default_categories = [
-            {'name': 'Alimentación', 'color': '#ef4444', 'is_income': False},
+            {'name': 'Alimentación', 'color': '#ef4444', 'icon': 'shopping_cart', 'is_income': False},
             {'name': 'Transporte', 'color': '#f97316', 'is_income': False},
             {'name': 'Hogar', 'color': '#eab308', 'is_income': False},
             {'name': 'Ocio', 'color': '#22c55e', 'is_income': False},

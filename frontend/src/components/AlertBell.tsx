@@ -85,7 +85,8 @@ export function AlertBell() {
             {/* Bell Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative p-2 rounded-lg bg-background hover:bg-accent transition-all border border-border shadow-sm"
+                className="relative p-2 rounded-xl bg-background/80 hover:bg-secondary transition-all border border-border/70 shadow-sm"
+                aria-label="Notificaciones"
             >
                 <Bell className="w-5 h-5 text-muted-foreground" />
                 {unreadCount > 0 && (
@@ -97,16 +98,16 @@ export function AlertBell() {
 
             {/* Dropdown */}
             {isOpen && (
-                <div className="absolute right-0 top-12 w-96 bg-card border border-border rounded-xl shadow-md overflow-hidden z-50">
+                <div className="absolute right-0 top-12 w-96 glass-card border border-border/80 rounded-2xl shadow-xl overflow-hidden z-50">
                     {/* Header */}
-                    <div className="flex justify-between items-center p-4 border-b border-border">
-                        <h3 className="font-semibold text-foreground tracking-tight">Notificaciones</h3>
+                    <div className="flex justify-between items-center p-4 border-b border-border/60">
+                        <h3 className="font-sans font-semibold text-foreground tracking-tight">Notificaciones</h3>
                         {unreadCount > 0 && (
                             <button
                                 onClick={handleMarkAllRead}
-                                className="flex items-center gap-1 px-2 py-1 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded-lg text-secondary-foreground transition-all"
+                                className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded-xl text-secondary-foreground transition-all"
                             >
-                                <CheckCheck className="w-3 h-3" />
+                                <CheckCheck className="w-3.5 h-3.5" />
                                 Leer todo
                             </button>
                         )}

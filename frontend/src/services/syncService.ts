@@ -8,10 +8,14 @@ import {
     cacheCategories,
     getCachedCategories
 } from './offlineStore';
-import { createTransaction, getCategories } from './api';
+import { createTransaction, getCategories, getTransactions } from './api';
+import type { SyncConflictItem } from '../components/MergeEditorModal';
 
 let isSyncing = false;
 let syncListeners: ((status: SyncStatus) => void)[] = [];
+let conflictListeners: ((conflict: SyncConflictItem | null) => void)[] = [];
+let activeConflict: SyncConflictItem | null = null;
+let pendingConflictQueue: SyncConflictItem[] = [];
 
 export interface SyncStatus {
     isSyncing: boolean;
@@ -31,11 +35,23 @@ function notifyListeners() {
     syncListeners.forEach(listener => listener(currentStatus));
 }
 
+function notifyConflictListeners() {
+    conflictListeners.forEach(listener => listener(activeConflict));
+}
+
 export function subscribeSyncStatus(callback: (status: SyncStatus) => void): () => void {
     syncListeners.push(callback);
-    callback(currentStatus); // Immediately send current status
+    callback(currentStatus);
     return () => {
         syncListeners = syncListeners.filter(l => l !== callback);
+    };
+}
+
+export function subscribeSyncConflict(callback: (conflict: SyncConflictItem | null) => void): () => void {
+    conflictListeners.push(callback);
+    callback(activeConflict);
+    return () => {
+        conflictListeners = conflictListeners.filter(l => l !== callback);
     };
 }
 
@@ -43,10 +59,60 @@ export function getSyncStatus(): SyncStatus {
     return currentStatus;
 }
 
-// Sync unsynced transactions to server
-export async function syncPendingTransactions(): Promise<{ success: number; failed: number }> {
+export function getActiveConflict(): SyncConflictItem | null {
+    return activeConflict;
+}
+
+// Resolver conflicto desde el Merge Editor
+export async function resolveActiveConflict(choice: 'local' | 'server'): Promise<void> {
+    if (!activeConflict) return;
+
+    const conflict = activeConflict;
+    const localId = String(conflict.id);
+
+    try {
+        if (choice === 'local') {
+            // Se fuerza la versión local enviándola como nueva o actualizando en el servidor
+            await createTransaction({
+                description: conflict.local.description,
+                amount: conflict.local.amount,
+                category: conflict.local.category_id || undefined,
+                date: conflict.local.date,
+                type: conflict.local.type || 'expense',
+                account: 1,
+            });
+            await markTransactionSynced(localId);
+        } else {
+            // Se acepta la versión del servidor: se marca la versión local como sincronizada/resuelta
+            await markTransactionSynced(localId);
+        }
+    } catch (err) {
+        console.error('Error al resolver conflicto:', err);
+    } finally {
+        // Pasar al siguiente conflicto si existe en la cola
+        if (pendingConflictQueue.length > 0) {
+            activeConflict = pendingConflictQueue.shift() || null;
+        } else {
+            activeConflict = null;
+        }
+        notifyConflictListeners();
+        await updatePendingCount();
+    }
+}
+
+export function dismissConflict(): void {
+    if (pendingConflictQueue.length > 0) {
+        activeConflict = pendingConflictQueue.shift() || null;
+    } else {
+        activeConflict = null;
+    }
+    notifyConflictListeners();
+}
+
+// Sincronización Bidireccional con Detección de Conflictos
+export async function performFullBidirectionalSync(): Promise<{ success: number; failed: number; conflicts: number }> {
     if (isSyncing || !isOnline()) {
-        return { success: 0, failed: 0 };
+        return { success: 0, failed: 0, conflicts: 0 };
     }
 
     isSyncing = true;
@@ -55,51 +121,107 @@ export async function syncPendingTransactions(): Promise<{ success: number; fail
 
     let success = 0;
     let failed = 0;
+    let conflictsFound = 0;
 
     try {
+        // 1. Sincronizar catálogo de categorías bidireccionalmente
+        await syncCategories();
+
+        // 2. Obtener datos del servidor para contrastar
+        let serverTxs: any[] = [];
+        try {
+            serverTxs = await getTransactions();
+        } catch (err) {
+            console.warn('No se pudieron descargar transacciones del servidor:', err);
+        }
+
+        // 3. Revisar transacciones locales pendientes
         const unsyncedTxs = await getUnsyncedTransactions();
         currentStatus.pendingCount = unsyncedTxs.length;
         notifyListeners();
 
         for (const tx of unsyncedTxs) {
             try {
-                // Send to server
+                // Comprobar si existe un registro coincidente en el servidor
+                const serverMatch = serverTxs.find((st: any) => 
+                    st.date === tx.date && 
+                    Math.abs(Number(st.amount)) === Math.abs(Number(tx.amount))
+                );
+
+                // Detección de Colisión (Merge Conflict)
+                if (serverMatch) {
+                    const descDiffer = (serverMatch.description || '').trim().toLowerCase() !== (tx.description || '').trim().toLowerCase();
+                    const catDiffer = serverMatch.category && tx.category_id && serverMatch.category !== tx.category_id;
+
+                    if (descDiffer || catDiffer) {
+                        // Conflicto real: datos discordantes en local y servidor
+                        const conflictItem: SyncConflictItem = {
+                            id: tx.id,
+                            local: {
+                                description: tx.description,
+                                amount: tx.amount,
+                                date: tx.date,
+                                category_id: tx.category_id,
+                                category_name: tx.category_name,
+                                type: tx.type,
+                            },
+                            server: {
+                                description: serverMatch.description,
+                                amount: serverMatch.amount,
+                                date: serverMatch.date,
+                                category_id: serverMatch.category,
+                                category_name: serverMatch.category_name,
+                                type: serverMatch.type,
+                            }
+                        };
+
+                        conflictsFound++;
+                        if (!activeConflict) {
+                            activeConflict = conflictItem;
+                            notifyConflictListeners();
+                        } else {
+                            pendingConflictQueue.push(conflictItem);
+                        }
+                        continue; // No sobrescribir, esperar resolución explícita del Merge Editor
+                    }
+                }
+
+                // Si no hay colisión, enviar al servidor
                 await createTransaction({
                     description: tx.description,
                     amount: tx.amount,
                     category: tx.category_id,
                     date: tx.date,
                     type: tx.type,
-                    account: 1, // Default account
+                    account: 1,
                 });
 
-                // Mark as synced locally
+                // Marcar como sincronizado localmente
                 await markTransactionSynced(tx.id);
                 success++;
 
-                currentStatus.pendingCount--;
+                currentStatus.pendingCount = Math.max(0, currentStatus.pendingCount - 1);
                 notifyListeners();
             } catch (error) {
-                console.error('Failed to sync transaction:', tx.id, error);
+                console.error('Fallo al sincronizar transacción:', tx.id, error);
                 failed++;
             }
         }
 
-        // Also process sync queue for any other operations
+        // 4. Limpiar cola de operaciones offline adicionales
         const queue = await getSyncQueue();
         for (const item of queue) {
             try {
-                // For now, only handle create actions (already processed above via unsyncedTxs)
                 await removeSyncQueueItem(item.id);
             } catch (error) {
-                console.error('Failed to process sync queue item:', item.id, error);
+                console.error('Error al procesar cola de sincronización:', item.id, error);
             }
         }
 
         currentStatus.lastSyncTime = new Date().toISOString();
         currentStatus.error = null;
     } catch (error) {
-        currentStatus.error = error instanceof Error ? error.message : 'Sync failed';
+        currentStatus.error = error instanceof Error ? error.message : 'Error en sincronización';
         console.error('Sync error:', error);
     } finally {
         isSyncing = false;
@@ -107,14 +229,15 @@ export async function syncPendingTransactions(): Promise<{ success: number; fail
         notifyListeners();
     }
 
-    return { success, failed };
+    return { success, failed, conflicts: conflictsFound };
 }
 
-// Cache categories for offline use
+// Alias de retrocompatibilidad
+export const syncPendingTransactions = performFullBidirectionalSync;
+
+// Cachear categorías para uso offline
 export async function syncCategories(): Promise<void> {
-    if (!isOnline()) {
-        return;
-    }
+    if (!isOnline()) return;
 
     try {
         const categories = await getCategories();
@@ -129,12 +252,11 @@ export async function syncCategories(): Promise<void> {
     }
 }
 
-// Get categories (from server if online, from cache if offline)
+// Obtener categorías (servidor o caché offline)
 export async function getOfflineCategories() {
     if (isOnline()) {
         try {
             const categories = await getCategories();
-            // Cache for offline use
             await cacheCategories(categories.map(c => ({
                 id: c.id,
                 name: c.name,
@@ -143,38 +265,45 @@ export async function getOfflineCategories() {
             })));
             return categories;
         } catch {
-            // Fall back to cache
             return getCachedCategories();
         }
     }
     return getCachedCategories();
 }
 
-// Auto-sync when coming online
+// Auto-sync al volver online + Cron horario (cada 1 hora)
 let unsubscribeConnectivity: (() => void) | null = null;
+let hourlyCronInterval: ReturnType<typeof setInterval> | null = null;
+const ONE_HOUR_MS = 60 * 60 * 1000; // 1 hora
 
 export function startAutoSync(): void {
-    if (unsubscribeConnectivity) return;
-
-    // Initial sync
+    // Sincronización inicial si hay conexión
     if (isOnline()) {
-        syncPendingTransactions();
-        syncCategories();
+        performFullBidirectionalSync();
     }
 
-    // Listen for connectivity changes
-    unsubscribeConnectivity = onConnectivityChange(async (online) => {
-        if (online) {
-            console.log('📶 Online - starting sync...');
-            await syncCategories();
-            const result = await syncPendingTransactions();
-            if (result.success > 0) {
-                console.log(`✅ Synced ${result.success} transactions`);
+    // Programar Cron de sincronización horaria
+    if (!hourlyCronInterval) {
+        hourlyCronInterval = setInterval(() => {
+            console.log('⏰ [Cron 1h Web] Ejecutando sincronización horaria bidireccional...');
+            performFullBidirectionalSync();
+        }, ONE_HOUR_MS);
+    }
+
+    // Escucha de conectividad
+    if (!unsubscribeConnectivity) {
+        unsubscribeConnectivity = onConnectivityChange(async (online) => {
+            if (online) {
+                console.log('📶 Online - Ejecutando sincronización bidireccional...');
+                const result = await performFullBidirectionalSync();
+                if (result.success > 0) {
+                    console.log(`✅ Sincronizadas ${result.success} transacciones`);
+                }
+            } else {
+                console.log('📴 Modo Offline activado');
             }
-        } else {
-            console.log('📴 Offline - transactions will be queued');
-        }
-    });
+        });
+    }
 }
 
 export function stopAutoSync(): void {
@@ -182,9 +311,13 @@ export function stopAutoSync(): void {
         unsubscribeConnectivity();
         unsubscribeConnectivity = null;
     }
+    if (hourlyCronInterval) {
+        clearInterval(hourlyCronInterval);
+        hourlyCronInterval = null;
+    }
 }
 
-// Update pending count for status display
+// Actualizar conteo de pendientes para estado visual
 export async function updatePendingCount(): Promise<void> {
     const unsynced = await getUnsyncedTransactions();
     currentStatus.pendingCount = unsynced.length;

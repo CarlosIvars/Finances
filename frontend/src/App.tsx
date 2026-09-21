@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getTransactions } from './services/api';
-import { startAutoSync } from './services/syncService';
+import { startAutoSync, stopAutoSync } from './services/syncService';
 import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { TransactionsPage } from './pages/TransactionsPage';
@@ -44,10 +44,13 @@ function App() {
     setCheckingAuth(false);
   }, []);
 
-  // Start auto-sync when authenticated
+  // Start auto-sync when authenticated (includes 1h cron)
   useEffect(() => {
     if (isAuthenticated) {
       startAutoSync();
+      return () => {
+        stopAutoSync();
+      };
     }
   }, [isAuthenticated]);
 
@@ -93,8 +96,8 @@ function App() {
   // Show loading while checking auth
   if (checkingAuth) {
     return (
-      <div className="min-h-screen bg-[#0b1120] flex items-center justify-center">
-        <Loader2 className="animate-spin w-10 h-10 text-blue-500" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="animate-spin w-10 h-10 text-primary" />
       </div>
     );
   }

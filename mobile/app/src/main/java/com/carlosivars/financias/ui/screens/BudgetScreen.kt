@@ -22,6 +22,7 @@ import com.carlosivars.financias.data.BudgetEntity
 import com.carlosivars.financias.model.Category
 import com.carlosivars.financias.model.Transaction
 import com.carlosivars.financias.model.TransactionType
+import com.carlosivars.financias.ui.components.CategoryIcon
 import com.carlosivars.financias.ui.components.EditBudgetDialog
 import com.carlosivars.financias.ui.theme.*
 import java.util.Locale
@@ -30,6 +31,7 @@ import java.util.Locale
 fun BudgetScreen(
     budgets: List<BudgetEntity>,
     transactions: List<Transaction>,
+    categories: List<Category>,
     onSaveBudget: (categoryId: String, categoryName: String, limit: Double, colorHex: String) -> Unit
 ) {
     var categoryToEdit by remember { mutableStateOf<Pair<Category, Double>?>(null) }
@@ -46,23 +48,22 @@ fun BudgetScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground)
             .padding(horizontal = 20.dp),
         contentPadding = PaddingValues(top = 20.dp, bottom = 100.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Header
         item {
             Column {
                 Text(
                     text = "Presupuestos",
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = "Controla tus límites de gasto mensuales",
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp
                 )
             }
@@ -72,8 +73,9 @@ fun BudgetScreen(
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = CardBackground),
-                shape = RoundedCornerShape(20.dp)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
             ) {
                 Column(
                     modifier = Modifier
@@ -86,18 +88,18 @@ fun BudgetScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("Total Presupuestado", color = TextSecondary, fontSize = 13.sp)
+                            Text("Total Presupuestado", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = String.format(Locale.GERMANY, "%,.2f €", totalBudget),
-                                color = TextPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
 
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("Gastado", color = TextSecondary, fontSize = 13.sp)
+                            Text("Gastado", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = String.format(Locale.GERMANY, "%,.2f €", totalSpentInBudgeted),
@@ -116,8 +118,8 @@ fun BudgetScreen(
                             .fillMaxWidth()
                             .height(10.dp)
                             .clip(RoundedCornerShape(5.dp)),
-                        color = if (totalSpentInBudgeted > totalBudget) ExpenseRed else PrimaryAccent,
-                        trackColor = CardBorder
+                        color = if (totalSpentInBudgeted > totalBudget) ExpenseRed else MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -128,7 +130,7 @@ fun BudgetScreen(
                         } else {
                             String.format(Locale.GERMANY, "¡Has excedido tu presupuesto por %,.2f €!", totalSpentInBudgeted - totalBudget)
                         },
-                        color = if (totalSpentInBudgeted <= totalBudget) TextSecondary else ExpenseRed,
+                        color = if (totalSpentInBudgeted <= totalBudget) MaterialTheme.colorScheme.onSurfaceVariant else ExpenseRed,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -140,14 +142,14 @@ fun BudgetScreen(
         item {
             Text(
                 text = "Límites por Categoría",
-                color = TextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
         }
 
         // Lista de todas las categorías con opción de fijar presupuesto
-        val allExpenseCategories = Category.ALL.filter { !it.isIncome }
+        val allExpenseCategories = categories.filter { !it.isIncome }
         items(allExpenseCategories) { cat ->
             val budget = budgets.find { it.categoryId == cat.id || it.categoryName.equals(cat.name, ignoreCase = true) }
             val limit = budget?.monthlyLimit ?: 0.0
@@ -157,7 +159,7 @@ fun BudgetScreen(
             val animatedProgress by animateFloatAsState(targetValue = progress.coerceIn(0f, 1f), label = "budgetProgress")
 
             val statusColor = when {
-                limit <= 0 -> TextSecondary
+                limit <= 0 -> MaterialTheme.colorScheme.onSurfaceVariant
                 spent > limit -> ExpenseRed
                 spent >= limit * 0.8 -> Color(0xFFF59E0B) // Advertencia 80%+
                 else -> IncomeGreen
@@ -165,8 +167,9 @@ fun BudgetScreen(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = CardBackground),
-                shape = RoundedCornerShape(16.dp)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
             ) {
                 Column(
                     modifier = Modifier
@@ -185,34 +188,21 @@ fun BudgetScreen(
                             val catColor = try {
                                 Color(android.graphics.Color.parseColor(cat.colorHex))
                             } catch (_: Exception) {
-                                PrimaryAccent
+                                MaterialTheme.colorScheme.primary
                             }
 
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .background(catColor.copy(alpha = 0.15f), shape = RoundedCornerShape(10.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = when (cat.id) {
-                                        "food" -> "🛒"
-                                        "transport" -> "⛽"
-                                        "leisure" -> "🍔"
-                                        "housing" -> "🏠"
-                                        "health" -> "💊"
-                                        "subscriptions" -> "📱"
-                                        "transfers" -> "💸"
-                                        else -> "💳"
-                                    },
-                                    fontSize = 18.sp
-                                )
-                            }
+                            CategoryIcon(
+                                categoryIdOrName = cat.id,
+                                colorHex = cat.colorHex,
+                                size = 36.dp,
+                                iconSize = 18.dp,
+                                shapeRadius = 10.dp
+                            )
 
                             Column {
                                 Text(
                                     text = cat.name,
-                                    color = TextPrimary,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 15.sp
                                 )
@@ -233,7 +223,7 @@ fun BudgetScreen(
                             Icon(
                                 Icons.Default.Edit,
                                 contentDescription = "Editar presupuesto",
-                                tint = PrimaryAccent,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -248,7 +238,7 @@ fun BudgetScreen(
                                 .height(8.dp)
                                 .clip(RoundedCornerShape(4.dp)),
                             color = statusColor,
-                            trackColor = CardBorder
+                            trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                         )
 
                         Spacer(modifier = Modifier.height(6.dp))
@@ -258,7 +248,7 @@ fun BudgetScreen(
                         ) {
                             Text(
                                 text = String.format(Locale.GERMANY, "%.0f%% consumido", progress * 100),
-                                color = TextSecondary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 11.sp
                             )
                             Text(
@@ -291,4 +281,3 @@ fun BudgetScreen(
         )
     }
 }
-

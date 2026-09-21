@@ -22,6 +22,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
 data class SyncResult(
     val success: Boolean,
     val pushedCount: Int = 0,
@@ -33,10 +37,17 @@ class SyncManager(private val context: Context) {
 
     companion object {
         private const val TAG = "FinancIAsSync"
+        private val _activeConflict = MutableStateFlow<MobileSyncConflict?>(null)
+        val activeConflict: StateFlow<MobileSyncConflict?> = _activeConflict.asStateFlow()
+
+        fun clearConflict() {
+            _activeConflict.value = null
+        }
     }
 
     private val db = AppDatabase.getDatabase(context)
     private val transactionDao = db.transactionDao()
+    private val categoryDao = db.categoryDao()
     private val securePrefs = SecurePreferencesManager(context)
 
     suspend fun countPendingSync(): Int = withContext(Dispatchers.IO) {
@@ -60,6 +71,10 @@ class SyncManager(private val context: Context) {
         val baseUrl = normalizeBaseUrl(serverUrl)
 
         try {
+            // 0. Asegurarse de que transacciones sin serverId estén marcadas como pendientes
+            //    (fix para transacciones creadas antes de que pendingSync tuviera default=true)
+            transactionDao.markAllUnsyncedAsPending()
+
             // 1. PUSH: Enviar cambios locales al servidor
             val pushedCount = pushPendingTransactions(baseUrl, authToken)
 
@@ -106,6 +121,9 @@ class SyncManager(private val context: Context) {
             obj.put("description", item.description)
             obj.put("amount", if (item.type == "INCOME") item.amount else -item.amount)
             obj.put("type", if (item.type == "INCOME") "income" else "expense")
+            // Category IDs, not labels, preserve the web catalogue's identity and hierarchy.
+            val categoryId = item.categoryServerId ?: categoryDao.findServerIdByName(item.category)
+            if (categoryId != null) obj.put("category_id", categoryId)
 
             if (!item.metadataJson.isNullOrBlank() && item.metadataJson != "{}") {
                 try {
@@ -153,6 +171,23 @@ class SyncManager(private val context: Context) {
 
         val responseJson = postJson(pullUrl, requestBody.toString(), authToken)
         val txArray = responseJson.optJSONArray("transactions") ?: JSONArray()
+        val categoriesArray = responseJson.optJSONArray("categories") ?: JSONArray()
+        val serverCategories = buildList {
+            for (i in 0 until categoriesArray.length()) {
+                val item = categoriesArray.getJSONObject(i)
+                add(com.carlosivars.financias.data.CategoryEntity(
+                    serverId = item.getInt("id"),
+                    name = item.getString("name"),
+                    parentServerId = if (item.isNull("parent_id")) null else item.optInt("parent_id"),
+                    parentName = if (item.isNull("parent_name")) null else item.optString("parent_name"),
+                    colorHex = item.optString("color", "#cccccc"),
+                    icon = item.optString("icon", "credit_card"),
+                    isIncome = item.optBoolean("is_income", false)
+                ))
+            }
+        }
+        // The endpoint returns the complete catalogue, therefore replacement also propagates deletions.
+        categoryDao.replaceAll(serverCategories)
         var pulledCount = 0
 
         for (i in 0 until txArray.length()) {
@@ -162,7 +197,8 @@ class SyncManager(private val context: Context) {
             val rawAmount = item.getDouble("amount")
             val amount = kotlin.math.abs(rawAmount)
             val type = if (rawAmount >= 0) TransactionType.INCOME else TransactionType.EXPENSE
-            val categoryName = item.optString("category_name", "Otros")
+            val categoryName = item.optString("category_name", "Otros gastos")
+            val categoryServerId = if (item.isNull("category")) null else item.optInt("category")
             val dateStr = item.optString("date", "")
 
             val existing = transactionDao.getByServerId(serverId)
@@ -185,6 +221,7 @@ class SyncManager(private val context: Context) {
                     currency = "EUR",
                     type = type.name,
                     category = categoryName,
+                    categoryServerId = categoryServerId,
                     subCategory = null,
                     parentCategory = parentCat,
                     date = dateStr,
@@ -198,10 +235,69 @@ class SyncManager(private val context: Context) {
                 )
                 transactionDao.insertTransaction(entity)
                 pulledCount++
+            } else {
+                if (existing.pendingSync) {
+                    // Detección de colisión: cambios locales y del servidor discrepantes
+                    val descDiffer = existing.description.trim().lowercase() != desc.trim().lowercase()
+                    val amountDiffer = kotlin.math.abs(existing.amount - amount) > 0.001
+                    val catDiffer = categoryServerId != null && existing.categoryServerId != categoryServerId
+
+                    if (descDiffer || amountDiffer || catDiffer) {
+                        val conflict = MobileSyncConflict(
+                            localTransaction = existing,
+                            serverDescription = desc,
+                            serverAmount = amount,
+                            serverDate = dateStr,
+                            serverCategoryName = categoryName,
+                            serverCategoryServerId = categoryServerId,
+                            serverType = type.name,
+                            serverId = serverId
+                        )
+                        _activeConflict.value = conflict
+                        continue
+                    }
+                } else {
+                    // Sin cambios locales pendientes: el servidor es autoritativo, actualizamos local
+                    val parentCat = if (item.has("parent_category_name") && !item.isNull("parent_category_name")) {
+                        item.getString("parent_category_name")
+                    } else existing.parentCategory
+
+                    val updated = existing.copy(
+                        description = desc,
+                        amount = amount,
+                        type = type.name,
+                        category = categoryName,
+                        categoryServerId = categoryServerId,
+                        parentCategory = parentCat,
+                        date = dateStr,
+                        pendingSync = false
+                    )
+                    transactionDao.updateTransaction(updated)
+                    pulledCount++
+                }
             }
         }
 
         return pulledCount
+    }
+
+    suspend fun resolveConflict(conflict: MobileSyncConflict, keepLocal: Boolean) = withContext(Dispatchers.IO) {
+        if (keepLocal) {
+            val entity = conflict.localTransaction.copy(pendingSync = true)
+            transactionDao.updateTransaction(entity)
+        } else {
+            val entity = conflict.localTransaction.copy(
+                description = conflict.serverDescription,
+                amount = conflict.serverAmount,
+                date = conflict.serverDate,
+                category = conflict.serverCategoryName,
+                categoryServerId = conflict.serverCategoryServerId,
+                type = conflict.serverType,
+                pendingSync = false
+            )
+            transactionDao.updateTransaction(entity)
+        }
+        _activeConflict.value = null
     }
 
     private fun postJson(endpoint: String, jsonString: String, token: String): JSONObject {
@@ -212,8 +308,14 @@ class SyncManager(private val context: Context) {
         if (token.isNotBlank()) {
             conn.setRequestProperty("Authorization", "Bearer $token")
         }
-        conn.connectTimeout = 6000
-        conn.readTimeout = 8000
+        val cfClientId = securePrefs.cloudFlareClientId.trim()
+        val cfClientSecret = securePrefs.cloudFlareClientSecret.trim()
+        if (cfClientId.isNotBlank() && cfClientSecret.isNotBlank()) {
+            conn.setRequestProperty("CF-Access-Client-Id", cfClientId)
+            conn.setRequestProperty("CF-Access-Client-Secret", cfClientSecret)
+        }
+        conn.connectTimeout = 8000
+        conn.readTimeout = 10000
         conn.doOutput = true
 
         OutputStreamWriter(conn.outputStream, "UTF-8").use { writer ->
@@ -239,7 +341,10 @@ class SyncManager(private val context: Context) {
         if (!res.startsWith("http://") && !res.startsWith("https://")) {
             res = "https://$res"
         }
+        // Si el usuario incluyó /api al final, lo normalizamos
+        if (res.endsWith("/api")) {
+            res = res.removeSuffix("/api")
+        }
         return res
     }
 }
-

@@ -53,8 +53,8 @@ fun TransactionDetailDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = DarkBackground,
-        shape = RoundedCornerShape(20.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(16.dp),
         title = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -65,42 +65,29 @@ fun TransactionDetailDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(catColor.copy(alpha = 0.15f), shape = RoundedCornerShape(10.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (isIncome) "💰" else when (category.id) {
-                                "food" -> "🛒"
-                                "transport" -> "⛽"
-                                "leisure" -> "🍔"
-                                "housing" -> "🏠"
-                                "health" -> "💊"
-                                "subscriptions" -> "📱"
-                                "transfers" -> "💸"
-                                else -> "💳"
-                            },
-                            fontSize = 18.sp
-                        )
-                    }
+                    CategoryIcon(
+                        categoryIdOrName = if (isIncome) "salary" else category.id,
+                        colorHex = if (isIncome) "#10B981" else category.colorHex,
+                        size = 40.dp,
+                        iconSize = 20.dp,
+                        shapeRadius = 10.dp
+                    )
                     Column {
                         Text(
                             text = "Detalle del Movimiento",
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold,
                             fontSize = 17.sp
                         )
                         Text(
                             text = transaction.date,
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp
                         )
                     }
                 }
                 IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = TextSecondary)
+                    Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         },
@@ -113,10 +100,10 @@ fun TransactionDetailDialog(
             ) {
                 // Banner Importe y Concepto
                 Surface(
-                    color = CardBackground,
-                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(12.dp),
                     border = CardDefaults.outlinedCardBorder().copy(
-                        brush = androidx.compose.ui.graphics.SolidColor(CardBorder)
+                        brush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                     ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -126,7 +113,7 @@ fun TransactionDetailDialog(
                     ) {
                         Text(
                             text = transaction.description,
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -142,12 +129,12 @@ fun TransactionDetailDialog(
                                 fontWeight = FontWeight.ExtraBold
                             )
                             Surface(
-                                color = if (isIncome) IncomeGreen.copy(alpha = 0.15f) else PrimaryAccent.copy(alpha = 0.15f),
+                                color = if (isIncome) IncomeGreen.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text(
                                     text = if (isIncome) "Ingreso" else "Gasto",
-                                    color = if (isIncome) IncomeGreen else PrimaryAccent,
+                                    color = if (isIncome) IncomeGreen else MaterialTheme.colorScheme.primary,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -159,7 +146,7 @@ fun TransactionDetailDialog(
 
                 // Categoría Actual
                 Surface(
-                    color = DarkSurface,
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -171,7 +158,7 @@ fun TransactionDetailDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("Categoría", color = TextSecondary, fontSize = 11.sp)
+                            Text("Categoría", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             Text(
                                 text = if (!transaction.parentCategory.isNullOrBlank()) {
                                     "${transaction.parentCategory} › ${transaction.category}"
@@ -187,9 +174,9 @@ fun TransactionDetailDialog(
                         }
                         OutlinedButton(
                             onClick = onRecategorizeClick,
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(10.dp),
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryAccent)
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
                         ) {
                             Text("Cambiar", fontSize = 12.sp)
                         }
@@ -199,7 +186,7 @@ fun TransactionDetailDialog(
                 // Tarjeta Bancaria / Origen
                 if (card != null || source != null || opDate != null) {
                     Surface(
-                        color = DarkSurface,
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -209,7 +196,7 @@ fun TransactionDetailDialog(
                         ) {
                             Text(
                                 text = "INFORMACIÓN DEL PAGO",
-                                color = TextSecondary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.sp
@@ -223,12 +210,12 @@ fun TransactionDetailDialog(
                                     Icon(
                                         Icons.Default.CreditCard,
                                         contentDescription = null,
-                                        tint = PrimaryAccent,
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Column {
-                                        Text("Tarjeta empleada", color = TextSecondary, fontSize = 10.sp)
-                                        Text(card, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                        Text("Tarjeta empleada", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                                        Text(card, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                                     }
                                 }
                             }
@@ -241,12 +228,12 @@ fun TransactionDetailDialog(
                                     Icon(
                                         Icons.Default.AccountBalance,
                                         contentDescription = null,
-                                        tint = PrimaryAccent,
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Column {
-                                        Text("Origen / Entidad", color = TextSecondary, fontSize = 10.sp)
-                                        Text(source, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                        Text("Origen / Entidad", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                                        Text(source, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                                     }
                                 }
                             }
@@ -259,12 +246,12 @@ fun TransactionDetailDialog(
                                     Icon(
                                         Icons.Default.Schedule,
                                         contentDescription = null,
-                                        tint = PrimaryAccent,
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Column {
-                                        Text("Fecha/hora de la operación bancaria", color = TextSecondary, fontSize = 10.sp)
-                                        Text(opDate, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                        Text("Fecha/hora de la operación bancaria", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                                        Text(opDate, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                                     }
                                 }
                             }
@@ -277,12 +264,12 @@ fun TransactionDetailDialog(
                                     Icon(
                                         Icons.Default.Storefront,
                                         contentDescription = null,
-                                        tint = PrimaryAccent,
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Column {
-                                        Text("Comercio detectado", color = TextSecondary, fontSize = 10.sp)
-                                        Text(cleanMerchant, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                        Text("Comercio detectado", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                                        Text(cleanMerchant, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                                     }
                                 }
                             }
@@ -293,7 +280,7 @@ fun TransactionDetailDialog(
                 // Notificación Original Cruda
                 if (!rawText.isNullOrBlank() || !rawTitle.isNullOrBlank()) {
                     Surface(
-                        color = DarkSurface,
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -303,7 +290,7 @@ fun TransactionDetailDialog(
                         ) {
                             Text(
                                 text = "NOTIFICACIÓN ORIGINAL",
-                                color = TextSecondary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.sp
@@ -311,7 +298,7 @@ fun TransactionDetailDialog(
                             if (!rawTitle.isNullOrBlank()) {
                                 Text(
                                     text = "Título: $rawTitle",
-                                    color = TextPrimary,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -319,7 +306,7 @@ fun TransactionDetailDialog(
                             if (!rawText.isNullOrBlank()) {
                                 Text(
                                     text = rawText,
-                                    color = TextSecondary,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 12.sp,
                                     fontFamily = FontFamily.Monospace,
                                     lineHeight = 16.sp
@@ -342,21 +329,21 @@ fun TransactionDetailDialog(
                         ) {
                             Text(
                                 text = if (showRawDetails) "Ocultar metadatos técnicos" else "Ver metadatos técnicos (${metadata.size})",
-                                color = PrimaryAccent,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium
                             )
                             Icon(
                                 if (showRawDetails) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                                 contentDescription = null,
-                                tint = PrimaryAccent,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
 
                         if (showRawDetails) {
                             Surface(
-                                color = Color.Black.copy(alpha = 0.4f),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                 shape = RoundedCornerShape(8.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -367,7 +354,7 @@ fun TransactionDetailDialog(
                                     metadata.forEach { (key, value) ->
                                         Text(
                                             text = "$key: $value",
-                                            color = TextSecondary,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 11.sp,
                                             fontFamily = FontFamily.Monospace
                                         )
@@ -382,10 +369,10 @@ fun TransactionDetailDialog(
         confirmButton = {
             Button(
                 onClick = onDismiss,
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("Aceptar")
+                Text("Aceptar", color = MaterialTheme.colorScheme.onPrimary)
             }
         },
         dismissButton = {

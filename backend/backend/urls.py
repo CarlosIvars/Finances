@@ -17,11 +17,15 @@ Including another URLconf
 from pathlib import Path
 from django.contrib import admin
 from django.urls import path, include, re_path
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from api.views import RegisterView
 
+def health_check(request):
+    return JsonResponse({'status': 'ok', 'app': 'FinancIAs', 'message': 'Server is running'})
+
 urlpatterns = [
+    path('', health_check, name='health_check'),
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
     path('api/banking/', include('banking.urls')),

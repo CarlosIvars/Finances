@@ -18,14 +18,20 @@ interface TransactionDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertTransaction(transaction: TransactionEntity): Long
 
+    @androidx.room.Update
+    suspend fun updateTransaction(transaction: TransactionEntity): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertTransaction(transaction: TransactionEntity): Long
+
     @Query("SELECT * FROM transactions WHERE timestamp > :since ORDER BY timestamp DESC")
     suspend fun getTransactionsSince(since: Long): List<TransactionEntity>
 
-    @Query("UPDATE transactions SET category = :category, pendingSync = 1 WHERE id = :id")
-    suspend fun updateCategory(id: String, category: String): Int
+    @Query("UPDATE transactions SET category = :category, categoryServerId = :categoryServerId, pendingSync = 1 WHERE id = :id")
+    suspend fun updateCategory(id: String, category: String, categoryServerId: Int?): Int
 
-    @Query("UPDATE transactions SET category = :category, subCategory = :subCategory, parentCategory = :parentCategory, pendingSync = 1 WHERE id = :id")
-    suspend fun updateCategoryAndHierarchy(id: String, category: String, subCategory: String?, parentCategory: String?): Int
+    @Query("UPDATE transactions SET category = :category, categoryServerId = :categoryServerId, subCategory = :subCategory, parentCategory = :parentCategory, pendingSync = 1 WHERE id = :id")
+    suspend fun updateCategoryAndHierarchy(id: String, category: String, categoryServerId: Int?, subCategory: String?, parentCategory: String?): Int
 
     @Query("SELECT * FROM transactions WHERE pendingSync = 1")
     suspend fun getPendingSyncTransactions(): List<TransactionEntity>
@@ -42,7 +48,9 @@ interface TransactionDao {
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun deleteTransaction(id: String)
 
+    @Query("UPDATE transactions SET pendingSync = 1 WHERE serverId IS NULL")
+    suspend fun markAllUnsyncedAsPending(): Int
+
     @Query("DELETE FROM transactions")
     suspend fun clearAll()
 }
-

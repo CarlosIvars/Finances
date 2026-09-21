@@ -107,34 +107,34 @@ export function AnalyticsPage({ transactions }: AnalyticsPageProps) {
     return (
         <div className="space-y-8">
             <div>
-                <h2 className="text-3xl font-bold text-white mb-2">Análisis Financiero</h2>
-                <p className="text-slate-400">Evolución de tu economía a lo largo del tiempo</p>
+                <h2 className="text-3xl font-sans font-bold text-foreground mb-1 tracking-tight">Análisis Financiero</h2>
+                <p className="text-muted-foreground text-sm font-medium">Evolución de tu economía a lo largo del tiempo</p>
             </div>
 
             {metrics && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <Card>
-                        <p className="text-slate-400 text-sm mb-1">Balance Inicial</p>
-                        <p className="text-2xl font-bold text-white">{metrics.first.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+                        <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider mb-1">Balance Inicial</p>
+                        <p className="text-2xl font-sans font-bold text-foreground">{metrics.first.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
                     </Card>
                     <Card>
-                        <p className="text-slate-400 text-sm mb-1">Balance Actual</p>
-                        <p className="text-2xl font-bold text-white">{metrics.last.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+                        <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider mb-1">Balance Actual</p>
+                        <p className="text-2xl font-sans font-bold text-foreground">{metrics.last.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
                     </Card>
                     <Card>
-                        <p className="text-slate-400 text-sm mb-1">Variación</p>
+                        <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider mb-1">Variación</p>
                         <div className="flex items-center gap-2">
-                            {isPositive ? <ArrowUpRight className="text-emerald-400" size={20} /> : <ArrowDownRight className="text-rose-400" size={20} />}
-                            <p className={`text-2xl font-bold ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {isPositive ? <ArrowUpRight className="text-income" size={20} /> : <ArrowDownRight className="text-expense" size={20} />}
+                            <p className={`text-2xl font-sans font-bold ${isPositive ? 'text-income' : 'text-expense'}`}>
                                 {isPositive ? '+' : ''}{metrics.change.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
                             </p>
                         </div>
                     </Card>
                     <Card>
-                        <p className="text-slate-400 text-sm mb-1">Variación %</p>
+                        <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider mb-1">Variación %</p>
                         <div className="flex items-center gap-2">
-                            {isPositive ? <TrendingUp className="text-emerald-400" size={20} /> : <TrendingDown className="text-rose-400" size={20} />}
-                            <p className={`text-2xl font-bold ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {isPositive ? <TrendingUp className="text-income" size={20} /> : <TrendingDown className="text-expense" size={20} />}
+                            <p className={`text-2xl font-sans font-bold ${isPositive ? 'text-income' : 'text-expense'}`}>
                                 {isPositive ? '+' : ''}{metrics.changePercent.toFixed(2)}%
                             </p>
                         </div>
@@ -144,17 +144,17 @@ export function AnalyticsPage({ transactions }: AnalyticsPageProps) {
 
             <Card>
                 <div className="flex justify-between items-center mb-6">
-                    <h3 className="font-semibold text-lg text-white">Evolución del Balance</h3>
+                    <h3 className="font-sans font-semibold text-lg text-foreground tracking-tight">Evolución del Balance</h3>
 
                     {/* Period Filter Buttons */}
-                    <div className="flex gap-1 bg-slate-800 rounded-lg p-1">
+                    <div className="flex gap-1 bg-secondary/80 rounded-xl p-1 border border-border/60">
                         {(['all', '1y', '6m', '3m', '1m'] as PeriodFilter[]).map((period) => (
                             <button
                                 key={period}
                                 onClick={() => setPeriodFilter(period)}
-                                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${periodFilter === period
-                                    ? 'bg-blue-600 text-white shadow-lg'
-                                    : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${periodFilter === period
+                                    ? 'bg-primary text-primary-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-card/50'
                                     }`}
                             >
                                 {periodLabels[period]}
@@ -169,24 +169,24 @@ export function AnalyticsPage({ transactions }: AnalyticsPageProps) {
                             <AreaChart data={balanceData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={isPositive ? "#22c55e" : "#ef4444"} stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor={isPositive ? "#22c55e" : "#ef4444"} stopOpacity={0} />
+                                        <stop offset="5%" stopColor={isPositive ? "#10b981" : "#ef4444"} stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor={isPositive ? "#10b981" : "#ef4444"} stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                                <XAxis dataKey="displayDate" stroke="#64748b" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={{ stroke: '#334155' }} />
-                                <YAxis stroke="#64748b" tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} axisLine={{ stroke: '#334155' }} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.6} />
+                                <XAxis dataKey="displayDate" stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={{ stroke: 'hsl(var(--border))' }} />
+                                <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} axisLine={{ stroke: 'hsl(var(--border))' }} />
                                 <Tooltip
-                                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}
-                                    labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
+                                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))' }}
+                                    labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: '4px' }}
                                     formatter={(value) => value !== undefined ? [`${Number(value).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}`, 'Balance'] : ['', '']}
                                 />
-                                <ReferenceLine y={0} stroke="#475569" strokeDasharray="3 3" />
-                                <Area type="monotone" dataKey="balance" stroke={isPositive ? "#22c55e" : "#ef4444"} strokeWidth={2} fill="url(#balanceGradient)" />
+                                <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" opacity={0.6} />
+                                <Area type="monotone" dataKey="balance" stroke={isPositive ? "#10b981" : "#ef4444"} strokeWidth={2} fill="url(#balanceGradient)" />
                             </AreaChart>
                         </ResponsiveContainer>
                     ) : (
-                        <div className="h-full flex flex-col items-center justify-center text-slate-500">
+                        <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
                             <TrendingUp className="w-12 h-12 mb-4 opacity-50" />
                             <p className="text-lg font-medium">Sin datos disponibles</p>
                             <p className="text-sm">Importa transacciones para ver la evolución</p>
@@ -198,12 +198,12 @@ export function AnalyticsPage({ transactions }: AnalyticsPageProps) {
             {metrics && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Card>
-                        <h3 className="font-semibold text-white mb-4">Balance Máximo ({periodLabels[periodFilter]})</h3>
-                        <p className="text-3xl font-bold text-emerald-400">{metrics.max.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+                        <h3 className="font-sans font-semibold text-foreground mb-4">Balance Máximo ({periodLabels[periodFilter]})</h3>
+                        <p className="text-3xl font-sans font-bold text-income">{metrics.max.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
                     </Card>
                     <Card>
-                        <h3 className="font-semibold text-white mb-4">Balance Mínimo ({periodLabels[periodFilter]})</h3>
-                        <p className="text-3xl font-bold text-rose-400">{metrics.min.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+                        <h3 className="font-sans font-semibold text-foreground mb-4">Balance Mínimo ({periodLabels[periodFilter]})</h3>
+                        <p className="text-3xl font-sans font-bold text-expense">{metrics.min.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
                     </Card>
                 </div>
             )}

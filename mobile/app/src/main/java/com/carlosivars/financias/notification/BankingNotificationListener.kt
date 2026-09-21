@@ -25,20 +25,7 @@ class BankingNotificationListener : NotificationListenerService() {
         )
 
         fun isBankingOrWalletPackage(pkg: String): Boolean {
-            if (ALLOWED_PACKAGES.contains(pkg)) return true
-            val lower = pkg.lowercase()
-            return lower.contains("sabadell") ||
-                    lower.contains("inverline") ||
-                    lower.contains("wallet") ||
-                    lower.contains("bbva") ||
-                    lower.contains("santander") ||
-                    lower.contains("caixabank") ||
-                    lower.contains("imagin") ||
-                    lower.contains("revolut") ||
-                    lower.contains("n26") ||
-                    lower.contains("openbank") ||
-                    lower.contains("ing.direct") ||
-                    lower.contains("banc")
+            return com.carlosivars.financias.model.SupportedBankApp.isAnySupported(pkg)
         }
     }
 
@@ -67,8 +54,14 @@ class BankingNotificationListener : NotificationListenerService() {
         if (sbn == null) return
 
         val packageName = sbn.packageName ?: return
+        val prefs = repository.securePrefs
 
-        // 1. Siempre registrar en el capturador de diagnóstico para inspección
+        // 1. Filtrar únicamente las apps seleccionadas en el gestor de colección de apps
+        if (!prefs.isPackageMonitored(packageName)) {
+            return
+        }
+
+        // 2. Registrar en el capturador en vivo exclusivamente para las apps seleccionadas
         val notification = sbn.notification ?: return
         val extras = notification.extras ?: return
 
@@ -103,22 +96,16 @@ class BankingNotificationListener : NotificationListenerService() {
 
         NotificationCapture.addNotification(captured)
 
-        // 2. Filtro para movimientos bancarios: Sabadell, Wallet, BBVA, Santander, CaixaBank, Revolut, etc.
-        if (!isBankingOrWalletPackage(packageName)) {
-            return
-        }
-
-        // 2.1 Verificar toggles por entidad en ajustes seguros
-        val prefs = repository.securePrefs
+        // 2.1 Verificar toggles específicos por entidad si existieran
         val isSabadellPkg = packageName.contains("sabadell", ignoreCase = true) || packageName.contains("inverline", ignoreCase = true)
         val isWalletPkg = packageName.contains("wallet", ignoreCase = true) || packageName == "com.google.android.gms"
 
         if (isSabadellPkg && !prefs.isSabadellTrackerEnabled) {
-            Log.d(TAG, "Notificación de Sabadell ignorada porque el rastreador está desactivado en ajustes.")
+            Log.d(TAG, "Notificación de Sabadell ignorada porque el rastreador específico está desactivado.")
             return
         }
         if (isWalletPkg && !prefs.isWalletTrackerEnabled) {
-            Log.d(TAG, "Notificación de Wallet ignorada porque el rastreador está desactivado en ajustes.")
+            Log.d(TAG, "Notificación de Wallet ignorada porque el rastreador específico está desactivado.")
             return
         }
 
@@ -137,8 +124,8 @@ class BankingNotificationListener : NotificationListenerService() {
 
             val hash = calculateHash("$packageName|${sbn.id}|${sbn.postTime}|$title|$text")
             serviceScope.launch {
-                // Comprobar si la IA puede afinar la categoría si vino como "Otros"
-                val finalTransaction = if (parsedTransaction.category == "Otros" && prefs.isAiCategorizationEnabled) {
+                // Comprobar si la IA puede afinar la categoría por defecto.
+                val finalTransaction = if (parsedTransaction.category == "Otros gastos" && prefs.isAiCategorizationEnabled) {
                     val aiCat = CategoryClassifier.classifyWithAi(
                         merchantOrText = parsedTransaction.description,
                         amount = parsedTransaction.amount,
@@ -182,4 +169,3 @@ class BankingNotificationListener : NotificationListenerService() {
         return bytes.joinToString("") { "%02x".format(it) }
     }
 }
-

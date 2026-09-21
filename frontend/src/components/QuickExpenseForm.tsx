@@ -137,14 +137,14 @@ export function QuickExpenseForm({ onTransactionAdded }: QuickExpenseFormProps) 
 
             {/* Modal */}
             {isOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center z-50 p-4">
-                    <div className="bg-slate-900 rounded-t-2xl md:rounded-2xl w-full max-w-md border border-slate-700 shadow-2xl">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center z-50 p-4 animate-in fade-in">
+                    <div className="glass-card rounded-2xl w-full max-w-md border border-border/80 shadow-2xl overflow-hidden">
                         {/* Header */}
-                        <div className="flex items-center justify-between p-4 border-b border-slate-700">
-                            <h2 className="text-lg font-semibold text-white">Añadir Gasto</h2>
+                        <div className="flex items-center justify-between p-4 border-b border-border/60">
+                            <h2 className="text-lg font-sans font-bold text-foreground">Añadir Gasto</h2>
                             <button
                                 onClick={() => setIsOpen(false)}
-                                className="p-2 hover:bg-slate-800 rounded-full text-slate-400"
+                                className="p-2 hover:bg-secondary rounded-xl text-muted-foreground hover:text-foreground transition-colors"
                             >
                                 <X size={20} />
                             </button>
@@ -154,7 +154,7 @@ export function QuickExpenseForm({ onTransactionAdded }: QuickExpenseFormProps) 
                         <form onSubmit={handleSubmit} className="p-4 space-y-4">
                             {/* Amount Input */}
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Cantidad</label>
+                                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Cantidad</label>
                                 <div className="relative">
                                     <input
                                         type="number"
@@ -162,32 +162,32 @@ export function QuickExpenseForm({ onTransactionAdded }: QuickExpenseFormProps) 
                                         value={amount}
                                         onChange={(e) => setAmount(e.target.value)}
                                         placeholder="0.00"
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-2xl text-white text-center focus:outline-none focus:border-blue-500"
+                                        className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-2xl font-sans font-bold text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
                                         autoFocus
                                     />
-                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xl">€</span>
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold text-lg">€</span>
                                 </div>
                             </div>
 
                             {/* Category Grid */}
                             <div>
-                                <label className="block text-sm text-slate-400 mb-2">Categoría</label>
+                                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Categoría</label>
                                 <div className="grid grid-cols-4 gap-2">
                                     {categories.slice(0, 8).map((cat) => (
                                         <button
                                             key={cat.id}
                                             type="button"
                                             onClick={() => setCategoryId(cat.id)}
-                                            className={`p-2 rounded-lg text-xs text-center transition-all ${categoryId === cat.id
-                                                    ? 'ring-2 ring-blue-500 bg-slate-700'
-                                                    : 'bg-slate-800 hover:bg-slate-700'
+                                            className={`p-2 rounded-xl text-xs text-center transition-all border ${categoryId === cat.id
+                                                    ? 'ring-2 ring-primary bg-primary/10 border-primary/30 text-foreground font-semibold'
+                                                    : 'bg-secondary/60 hover:bg-secondary border-border/60 text-muted-foreground hover:text-foreground'
                                                 }`}
                                         >
                                             <div
-                                                className="w-8 h-8 rounded-full mx-auto mb-1"
+                                                className="w-7 h-7 rounded-full mx-auto mb-1.5 shadow-sm"
                                                 style={{ backgroundColor: cat.color }}
                                             />
-                                            <span className="text-slate-300 truncate block">{cat.name}</span>
+                                            <span className="truncate block">{cat.name}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -195,19 +195,19 @@ export function QuickExpenseForm({ onTransactionAdded }: QuickExpenseFormProps) 
 
                             {/* Description */}
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Descripción (opcional)</label>
+                                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Descripción (opcional)</label>
                                 <input
                                     type="text"
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                     placeholder="Ej: Café con amigos"
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
+                                    className="w-full bg-background border border-border rounded-xl px-4 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm text-sm"
                                 />
                             </div>
 
                             {/* Offline indicator */}
                             {!isOnline && (
-                                <div className="flex items-center gap-2 text-amber-400 text-sm bg-amber-500/10 rounded-lg px-3 py-2">
+                                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-medium bg-amber-500/10 rounded-xl px-3 py-2 border border-amber-500/20">
                                     <WifiOff size={16} />
                                     <span>Se guardará localmente y sincronizará al conectar</span>
                                 </div>
@@ -217,12 +217,12 @@ export function QuickExpenseForm({ onTransactionAdded }: QuickExpenseFormProps) 
                             <button
                                 type="submit"
                                 disabled={saving || !amount || parseFloat(amount) <= 0}
-                                className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg text-white font-semibold flex items-center justify-center gap-2 hover:from-blue-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full py-2.5 bg-primary hover:bg-primary/90 rounded-xl text-primary-foreground font-semibold flex items-center justify-center gap-2 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {saving ? (
-                                    <Loader2 className="animate-spin" size={20} />
+                                    <Loader2 className="animate-spin" size={18} />
                                 ) : (
-                                    <Save size={20} />
+                                    <Save size={18} />
                                 )}
                                 {saving ? 'Guardando...' : 'Guardar Gasto'}
                             </button>

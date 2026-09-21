@@ -135,13 +135,13 @@ export function InsightsPage({ onNavigateToTransactions }: InsightsPageProps) {
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-3xl font-heading font-bold text-foreground mb-1 tracking-tight">🧠 Insights IA</h2>
+                    <h2 className="text-3xl font-sans font-bold text-foreground mb-1 tracking-tight">🧠 Insights IA</h2>
                     <p className="text-muted-foreground font-medium mt-1">Análisis inteligente de tus finanzas</p>
                 </div>
                 <button
                     onClick={handleGenerate}
                     disabled={isGenerating}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 rounded-lg text-primary-foreground font-medium transition-all shadow-sm disabled:opacity-50"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 rounded-xl text-primary-foreground font-medium transition-all shadow-sm disabled:opacity-50"
                 >
                     {isGenerating ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
@@ -162,7 +162,7 @@ export function InsightsPage({ onNavigateToTransactions }: InsightsPageProps) {
                         <button
                             onClick={handleGenerate}
                             disabled={isGenerating}
-                            className="px-6 py-2 bg-primary hover:bg-primary/90 rounded-lg text-primary-foreground font-medium transition-all"
+                            className="px-6 py-2 bg-primary hover:bg-primary/90 rounded-xl text-primary-foreground font-medium transition-all shadow-sm"
                         >
                             Generar mi primer análisis
                         </button>
@@ -178,7 +178,7 @@ export function InsightsPage({ onNavigateToTransactions }: InsightsPageProps) {
                         return (
                             <div
                                 key={alert.id}
-                                className={`rounded-xl border-l-4 ${getAlertTypeColor(alert.type)} border border-border overflow-hidden transition-all ${!alert.is_read ? 'ring-1 ring-primary/30 shadow-sm' : ''
+                                className={`rounded-2xl border-l-4 ${getAlertTypeColor(alert.type)} border border-border/80 glass-card overflow-hidden transition-all ${!alert.is_read ? 'ring-1 ring-primary/30 shadow-sm' : ''
                                     }`}
                             >
                                 {/* Header - clickable to expand */}

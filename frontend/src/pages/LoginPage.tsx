@@ -42,53 +42,61 @@ export function LoginPage({ onLogin, onGoToRegister }: LoginPageProps) {
     };
 
     return (
-        <div className="min-h-screen bg-[#0b1120] flex items-center justify-center p-4">
-            <div className="w-full max-w-md">
+        <div className="min-h-screen bg-background relative flex items-center justify-center p-4 overflow-hidden">
+            {/* Ambient glows */}
+            <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+                <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+                <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" />
+            </div>
+
+            <div className="w-full max-w-md relative z-10">
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center gap-3 mb-4">
-                        <PieChart className="w-10 h-10 text-blue-500" />
-                        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                    <div className="inline-flex items-center gap-3 mb-3">
+                        <div className="w-12 h-12 p-1.5 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center shadow-sm overflow-hidden">
+                            <img src="/logo.png" alt="FinancIAs Logo" className="w-full h-full object-contain" />
+                        </div>
+                        <h1 className="text-3xl font-sans font-bold bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent tracking-tight">
                             FinancIAs
                         </h1>
                     </div>
-                    <p className="text-slate-400">Gestión inteligente de finanzas personales</p>
+                    <p className="text-muted-foreground text-sm font-medium">Gestión inteligente de finanzas personales</p>
                 </div>
 
                 <Card>
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Usuario</label>
+                            <label className="block text-sm font-medium text-foreground mb-1.5">Usuario</label>
                             <div className="relative">
-                                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                                 <input
                                     type="text"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     placeholder="admin"
-                                    className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+                                    className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm text-sm"
                                     required
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Contraseña</label>
+                            <label className="block text-sm font-medium text-foreground mb-1.5">Contraseña</label>
                             <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                                 <input
                                     type="password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="••••••••"
-                                    className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+                                    className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm text-sm"
                                     required
                                 />
                             </div>
                         </div>
 
                         {error && (
-                            <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                            <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-sm font-medium">
                                 <AlertCircle size={16} />
                                 {error}
                             </div>
@@ -100,11 +108,11 @@ export function LoginPage({ onLogin, onGoToRegister }: LoginPageProps) {
                     </form>
                 </Card>
 
-                <p className="text-center text-slate-400 text-sm mt-6">
+                <p className="text-center text-muted-foreground text-sm mt-6">
                     ¿No tienes una cuenta?{' '}
                     <button 
                         onClick={onGoToRegister}
-                        className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                        className="text-primary hover:underline font-semibold transition-colors"
                     >
                         Regístrate
                     </button>

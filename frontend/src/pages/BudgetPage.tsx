@@ -129,7 +129,7 @@ export function BudgetPage() {
             {/* Header */}
             <div className="flex justify-between items-center flex-wrap gap-4">
                 <div>
-                    <h2 className="text-3xl font-heading font-bold text-foreground mb-1 tracking-tight">💰 Presupuesto Mensual</h2>
+                    <h2 className="text-3xl font-sans font-bold text-foreground mb-1 tracking-tight">💰 Presupuesto Mensual</h2>
                     <p className="text-muted-foreground font-medium mt-1">Define cuánto planeas gastar en cada categoría</p>
                 </div>
 
@@ -138,14 +138,14 @@ export function BudgetPage() {
                     <div className="relative">
                         <button
                             onClick={() => setShowMonthPicker(!showMonthPicker)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-background border border-border rounded-lg text-foreground hover:bg-accent transition-all shadow-sm font-medium text-sm"
+                            className="flex items-center gap-2 px-4 py-2 bg-background border border-border rounded-xl text-foreground hover:bg-secondary transition-all shadow-sm font-medium text-sm"
                         >
                             <span className="capitalize">{formatMonth(selectedMonth)}</span>
                             <ChevronDown size={16} />
                         </button>
 
                         {showMonthPicker && (
-                            <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-md z-10 max-h-64 overflow-y-auto overflow-hidden">
+                            <div className="absolute right-0 mt-2 w-48 glass-card border border-border/80 rounded-xl shadow-lg z-20 max-h-64 overflow-y-auto overflow-hidden">
                                 {availableMonths.map(m => (
                                     <button
                                         key={m.value}
@@ -153,7 +153,7 @@ export function BudgetPage() {
                                             setSelectedMonth(m.value);
                                             setShowMonthPicker(false);
                                         }}
-                                        className={`w-full text-left px-4 py-2 hover:bg-accent capitalize text-sm transition-colors ${selectedMonth === m.value ? 'text-primary bg-primary/10 font-medium' : 'text-muted-foreground'
+                                        className={`w-full text-left px-4 py-2.5 hover:bg-secondary capitalize text-sm transition-colors ${selectedMonth === m.value ? 'text-primary bg-primary/10 font-medium' : 'text-muted-foreground'
                                             }`}
                                     >
                                         {m.label}
@@ -167,7 +167,7 @@ export function BudgetPage() {
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-medium transition-all disabled:opacity-50"
+                        className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-medium transition-all shadow-sm disabled:opacity-50"
                     >
                         {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save size={18} />}
                         Guardar
@@ -176,27 +176,27 @@ export function BudgetPage() {
             </div>
 
             {saveMessage && (
-                <div className="text-center text-sm py-2 text-emerald-400">{saveMessage}</div>
+                <div className="text-center text-sm py-2 font-medium text-income">{saveMessage}</div>
             )}
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card>
                     <div className="text-center py-4">
-                        <p className="text-muted-foreground font-medium text-sm mb-1 uppercase tracking-wider">Presupuesto Total</p>
-                        <p className="text-2xl font-heading font-bold text-foreground tracking-tight">{totalBudgeted.toFixed(2)} €</p>
+                        <p className="text-muted-foreground font-semibold text-xs mb-1 uppercase tracking-wider">Presupuesto Total</p>
+                        <p className="text-2xl font-sans font-bold text-foreground tracking-tight">{totalBudgeted.toFixed(2)} €</p>
                     </div>
                 </Card>
                 <Card>
                     <div className="text-center py-4">
-                        <p className="text-muted-foreground font-medium text-sm mb-1 uppercase tracking-wider">Gastado</p>
-                        <p className="text-2xl font-heading font-bold text-destructive tracking-tight">{totalSpent.toFixed(2)} €</p>
+                        <p className="text-muted-foreground font-semibold text-xs mb-1 uppercase tracking-wider">Gastado</p>
+                        <p className="text-2xl font-sans font-bold text-expense tracking-tight">{totalSpent.toFixed(2)} €</p>
                     </div>
                 </Card>
                 <Card>
                     <div className="text-center py-4">
-                        <p className="text-muted-foreground font-medium text-sm mb-1 uppercase tracking-wider">Diferencia</p>
-                        <p className={`text-2xl font-heading font-bold tracking-tight ${totalBudgeted - totalSpent >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
+                        <p className="text-muted-foreground font-semibold text-xs mb-1 uppercase tracking-wider">Diferencia</p>
+                        <p className={`text-2xl font-sans font-bold tracking-tight ${totalBudgeted - totalSpent >= 0 ? 'text-income' : 'text-expense'}`}>
                             {(totalBudgeted - totalSpent).toFixed(2)} €
                         </p>
                     </div>
@@ -206,7 +206,7 @@ export function BudgetPage() {
             {/* Budget Form */}
             <Card>
                 <div className="p-2">
-                    <h3 className="text-lg font-heading tracking-tight font-semibold text-foreground mb-4 px-2">Presupuesto por Categoría</h3>
+                    <h3 className="text-lg font-sans tracking-tight font-semibold text-foreground mb-4 px-2">Presupuesto por Categoría</h3>
 
                     <div className="space-y-3">
                         {categories.map(cat => {
@@ -219,12 +219,12 @@ export function BudgetPage() {
                             return (
                                 <div
                                     key={cat.id}
-                                    className={`p-4 rounded-xl border transition-colors ${isOver ? 'border-destructive/30 bg-destructive/5' : 'border-border bg-accent/30 hover:bg-accent/50'}`}
+                                    className={`p-4 rounded-2xl border transition-colors ${isOver ? 'border-red-500/30 bg-red-500/5' : 'border-border/80 bg-secondary/30 hover:bg-secondary/50'}`}
                                 >
                                     <div className="flex items-center gap-4">
                                         {/* Color indicator */}
                                         <div
-                                            className="w-2.5 h-10 rounded-full flex-shrink-0"
+                                            className="w-2.5 h-10 rounded-full flex-shrink-0 shadow-sm"
                                             style={{ backgroundColor: cat.color }}
                                         />
 
@@ -233,9 +233,9 @@ export function BudgetPage() {
                                             <p className="font-semibold text-foreground truncate">{cat.name}</p>
                                             {budget > 0 && (
                                                 <div className="mt-2">
-                                                    <div className="h-1.5 bg-border rounded-full overflow-hidden">
+                                                    <div className="h-1.5 bg-border/80 rounded-full overflow-hidden">
                                                         <div
-                                                            className={`h-full rounded-full transition-all ${isOver ? 'bg-destructive' : 'bg-primary'}`}
+                                                            className={`h-full rounded-full transition-all ${isOver ? 'bg-expense' : 'bg-primary'}`}
                                                             style={{ width: `${percentage}%` }}
                                                         />
                                                     </div>
@@ -250,7 +250,7 @@ export function BudgetPage() {
                                                 value={budget || ''}
                                                 onChange={(e) => handleBudgetChange(cat.id, e.target.value)}
                                                 placeholder="0"
-                                                className="w-24 px-3 py-2 bg-background border border-border rounded-lg text-foreground text-right focus:outline-none focus:ring-1 focus:ring-ring transition-colors shadow-sm"
+                                                className="w-24 px-3 py-2 bg-background border border-border rounded-xl text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
                                             />
                                             <span className="text-muted-foreground font-medium">€</span>
                                         </div>
@@ -258,7 +258,7 @@ export function BudgetPage() {
                                         {/* Spent */}
                                         <div className="w-28 text-right">
                                             <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">Gastado</p>
-                                            <p className={`font-semibold tracking-tight ${isOver ? 'text-destructive' : 'text-foreground'}`}>
+                                            <p className={`font-semibold tracking-tight ${isOver ? 'text-expense' : 'text-foreground'}`}>
                                                 {spent.toFixed(2)} €
                                             </p>
                                         </div>
@@ -267,9 +267,9 @@ export function BudgetPage() {
                                         <div className="w-8">
                                             {budget > 0 && (
                                                 isOver ? (
-                                                    <AlertTriangle className="text-rose-400" size={20} />
+                                                    <AlertTriangle className="text-red-500" size={20} />
                                                 ) : (
-                                                    <Check className="text-emerald-400" size={20} />
+                                                    <Check className="text-emerald-500" size={20} />
                                                 )
                                             )}
                                         </div>
@@ -283,16 +283,16 @@ export function BudgetPage() {
 
             {/* AI Advice Section */}
             <Card>
-                <div className="p-4">
+                <div className="p-2">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-heading tracking-tight font-semibold text-foreground flex items-center gap-2">
+                        <h3 className="text-lg font-sans tracking-tight font-semibold text-foreground flex items-center gap-2">
                             <Sparkles className="text-primary" size={20} />
                             Consejos IA
                         </h3>
                         <button
                             onClick={handleGetAdvice}
                             disabled={gettingAdvice}
-                            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 rounded-lg text-primary-foreground text-sm font-medium transition-all disabled:opacity-50 shadow-sm"
+                            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 rounded-xl text-primary-foreground text-sm font-medium transition-all disabled:opacity-50 shadow-sm"
                         >
                             {gettingAdvice ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -304,7 +304,7 @@ export function BudgetPage() {
                     </div>
 
                     {advice ? (
-                        <div className="p-4 bg-accent/50 border border-border rounded-xl">
+                        <div className="p-4 bg-secondary/50 border border-border/80 rounded-2xl">
                             <p className="text-foreground whitespace-pre-wrap leading-relaxed">{advice}</p>
                         </div>
                     ) : (
