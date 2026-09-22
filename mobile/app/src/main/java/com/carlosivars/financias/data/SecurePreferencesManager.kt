@@ -43,6 +43,10 @@ class SecurePreferencesManager(context: Context) {
         get() = sharedPreferences.getLong(KEY_LAST_SYNC, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_SYNC, value).apply()
 
+    var hasCompletedOneTimeHardSync: Boolean
+        get() = sharedPreferences.getBoolean("has_completed_one_time_hard_sync_v1", false)
+        set(value) = sharedPreferences.edit().putBoolean("has_completed_one_time_hard_sync_v1", value).apply()
+
     var isSabadellTrackerEnabled: Boolean
         get() = sharedPreferences.getBoolean(KEY_SABADELL_ENABLED, true)
         set(value) = sharedPreferences.edit().putBoolean(KEY_SABADELL_ENABLED, value).apply()

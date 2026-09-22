@@ -60,7 +60,8 @@ def get_spending_summary(user: User, months: int = 2) -> Dict[str, Any]:
     transactions = Transaction.objects.filter(
         user=user,
         date__gte=start_date,
-        type='expense'
+        type='expense',
+        is_deleted=False
     )
     
     # Gastos por categoría
@@ -113,7 +114,7 @@ def detect_anomalies(user: User) -> List[Dict]:
     categories = Category.objects.filter(user=user, is_income=False)
     
     for cat in categories:
-        transactions = Transaction.objects.filter(user=user, category=cat, type='expense')
+        transactions = Transaction.objects.filter(user=user, category=cat, type='expense', is_deleted=False)
         if transactions.count() < 3:
             continue
             
@@ -315,7 +316,8 @@ def generate_insights_heuristic(user: User) -> List[Dict]:
         # Get transaction IDs for this category
         tx_ids = list(Transaction.objects.filter(
             user=user, 
-            category_id=cat_id
+            category_id=cat_id,
+            is_deleted=False
         ).values_list('id', flat=True)[:20]) if cat_id else []
         
         insights.append({
@@ -450,6 +452,7 @@ def generate_budget_advice(user, month) -> str:
     spending = Transaction.objects.filter(
         user=user,
         type='expense',
+        is_deleted=False,
         date__gte=month,
         date__lt=next_month
     ).values('category__name').annotate(
@@ -560,6 +563,7 @@ def generate_budget_advice_heuristic(user, month) -> str:
     spending = Transaction.objects.filter(
         user=user,
         type='expense',
+        is_deleted=False,
         date__gte=month,
         date__lt=next_month
     ).values('category__name').annotate(

@@ -33,8 +33,20 @@ fun DashboardScreen(
     onOpenAddTransaction: (TransactionType) -> Unit,
     onTriggerTestBizum: () -> Unit
 ) {
-    val totalIncome = transactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
-    val totalExpense = transactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
+    var selectedPeriod by remember { mutableStateOf("current") }
+    val currentMonthPrefix = remember {
+        java.text.SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(java.util.Date())
+    }
+    val filteredTransactions = remember(transactions, selectedPeriod) {
+        if (selectedPeriod == "current") {
+            transactions.filter { it.date.startsWith(currentMonthPrefix) }
+        } else {
+            transactions
+        }
+    }
+
+    val totalIncome = filteredTransactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
+    val totalExpense = filteredTransactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
     val netBalance = totalIncome - totalExpense
 
     val savingsRate = if (totalIncome > 0) {
@@ -43,7 +55,7 @@ fun DashboardScreen(
         0.0
     }
 
-    val recentTransactions = transactions.take(5)
+    val recentTransactions = filteredTransactions.take(5)
 
     LazyColumn(
         modifier = Modifier
@@ -110,11 +122,11 @@ fun DashboardScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(8.dp)
-                                    .background(
-                                        color = if (isTrackerActive) IncomeGreen else ExpenseRed,
-                                        shape = CircleShape
-                                    )
+                                .size(8.dp)
+                                .background(
+                                    color = if (isTrackerActive) IncomeGreen else ExpenseRed,
+                                    shape = CircleShape
+                                )
                             )
                             Text(
                                 text = if (isTrackerActive) "Rastreo activo" else "Inactivo",
@@ -128,8 +140,54 @@ fun DashboardScreen(
             }
         }
 
-        // 2. Tarjeta Balance Principal
+        // 2. Tarjeta Balance Principal con selector de periodo
         item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ) {
+                    Row(modifier = Modifier.padding(3.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    if (selectedPeriod == "current") MaterialTheme.colorScheme.primary else Color.Transparent,
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                                .clickable { selectedPeriod = "current" }
+                                .padding(horizontal = 12.dp, vertical = 5.dp)
+                        ) {
+                            Text(
+                                text = "Este mes",
+                                color = if (selectedPeriod == "current") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    if (selectedPeriod == "all") MaterialTheme.colorScheme.primary else Color.Transparent,
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                                .clickable { selectedPeriod = "all" }
+                                .padding(horizontal = 12.dp, vertical = 5.dp)
+                        ) {
+                            Text(
+                                text = "Histórico",
+                                color = if (selectedPeriod == "all") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            }
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -140,7 +198,7 @@ fun DashboardScreen(
                     modifier = Modifier.padding(22.dp)
                 ) {
                     Text(
-                        text = "Balance total",
+                        text = if (selectedPeriod == "current") "Balance del mes" else "Balance total",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
@@ -293,9 +351,9 @@ fun DashboardScreen(
                     fontWeight = FontWeight.Bold
                 )
 
-                if (transactions.isNotEmpty()) {
+                if (filteredTransactions.isNotEmpty()) {
                     Text(
-                        text = "Ver todos (${transactions.size})",
+                        text = "Ver todos (${filteredTransactions.size})",
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,

@@ -119,6 +119,7 @@ class MainActivity : ComponentActivity() {
                                     onRestoreBackup = { json -> repository.restoreBackupJson(json) },
                                     onTestConnection = { url, token, cfId, cfSecret -> repository.testCloudConnection(url, token, cfId, cfSecret) },
                                     onPerformSync = { repository.performSync() },
+                                    onPerformHardSync = { repository.performHardSync() },
                                     onClearAllData = { repository.clearAll() },
                                     onOpenNotificationSettings = {
                                         NotificationUtils.openNotificationListenerSettings(this@MainActivity)

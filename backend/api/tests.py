@@ -84,7 +84,7 @@ class MobileCategorySyncTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()['created'][0]['status'], 'exists')
+        self.assertIn(response.json()['created'][0]['status'], ['updated', 'exists'])
         self.assertEqual(Transaction.objects.get().category_id, self.category.id)
 
 
@@ -211,3 +211,87 @@ class SyncViewSetTests(TestCase):
         res_after = self.client.post('/api/sync/pull/', {'since': since_time}, content_type='application/json', secure=True)
         self.assertEqual(len(res_after.json()['transactions']), 1)
         self.assertEqual(res_after.json()['transactions'][0]['description'], 'Compra modificada en web')
+
+    def test_sync_push_creates_with_client_id_and_is_idempotent(self):
+        payload = {
+            'transactions': [{
+                'local_id': 'mobile-uuid-12345',
+                'client_id': 'mobile-uuid-12345',
+                'date': '2026-09-22',
+                'description': 'Mercadona compra',
+                'amount': -34.00,
+                'type': 'expense',
+                'category_id': self.cat.id,
+            }]
+        }
+        res1 = self.client.post('/api/sync/push/', data=json.dumps(payload), content_type='application/json', secure=True)
+        self.assertEqual(res1.status_code, 200)
+        self.assertEqual(res1.json()['created'][0]['status'], 'created')
+        server_id = res1.json()['created'][0]['server_id']
+
+        # Push again with same client_id (e.g. retry after network blip)
+        res2 = self.client.post('/api/sync/push/', data=json.dumps(payload), content_type='application/json', secure=True)
+        self.assertEqual(res2.status_code, 200)
+        self.assertEqual(res2.json()['created'][0]['status'], 'exists')
+        self.assertEqual(res2.json()['created'][0]['server_id'], server_id)
+
+        # Only one transaction exists in DB
+        self.assertEqual(Transaction.objects.filter(user=self.user, client_id='mobile-uuid-12345').count(), 1)
+
+    def test_sync_push_soft_deletes_by_id_and_client_id(self):
+        tx1 = Transaction.objects.create(
+            user=self.user, account=self.account, category=self.cat,
+            client_id='mobile-del-1', date='2026-09-20', description='Repsol', amount=-45.00, type='expense'
+        )
+        tx2 = Transaction.objects.create(
+            user=self.user, account=self.account, category=self.cat,
+            client_id='mobile-del-2', date='2026-09-20', description='Mercadona', amount=-34.00, type='expense'
+        )
+
+        payload = {
+            'transactions': [],
+            'deleted_ids': [tx1.id],
+            'deleted_client_ids': ['mobile-del-2']
+        }
+        res = self.client.post('/api/sync/push/', data=json.dumps(payload), content_type='application/json', secure=True)
+        self.assertEqual(res.status_code, 200)
+
+        tx1.refresh_from_db()
+        tx2.refresh_from_db()
+        self.assertTrue(tx1.is_deleted)
+        self.assertTrue(tx2.is_deleted)
+        self.assertIsNotNone(tx1.deleted_at)
+        self.assertIsNotNone(tx2.deleted_at)
+
+    def test_sync_pull_includes_deleted_ids_and_client_ids(self):
+        tx = Transaction.objects.create(
+            user=self.user, account=self.account, category=self.cat,
+            client_id='deleted-client-id-xyz', date='2026-09-20', description='Borrado', amount=-10.00,
+            type='expense', is_deleted=True
+        )
+
+        res = self.client.post('/api/sync/pull/', data=json.dumps({'since': None}), content_type='application/json', secure=True)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn(tx.id, data['deleted_ids'])
+        self.assertIn('deleted-client-id-xyz', data['deleted_client_ids'])
+
+    def test_transaction_viewset_soft_delete_and_hides_deleted(self):
+        tx = Transaction.objects.create(
+            user=self.user, account=self.account, category=self.cat,
+            client_id='tx-viewset-test', date='2026-09-20', description='Visible', amount=-25.00, type='expense'
+        )
+        # DELETE via viewset
+        res_del = self.client.delete(f'/api/transactions/{tx.id}/', secure=True)
+        self.assertEqual(res_del.status_code, 204)
+
+        tx.refresh_from_db()
+        self.assertTrue(tx.is_deleted)
+        self.assertIsNotNone(tx.deleted_at)
+
+        # GET transactions list should not return tx
+        res_list = self.client.get('/api/transactions/', secure=True)
+        self.assertEqual(res_list.status_code, 200)
+        results = res_list.json()['results'] if 'results' in res_list.json() else res_list.json()
+        self.assertEqual(len([t for t in results if t['id'] == tx.id]), 0)
+

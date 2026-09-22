@@ -68,7 +68,8 @@ def find_category_by_learning(user, description: str, rules) -> Category:
             user=user,
             description__icontains=keyword,
             category__isnull=False,
-            is_pending=False
+            is_pending=False,
+            is_deleted=False
         ).first()
         
         if similar:
@@ -169,7 +170,8 @@ def process_import(import_batch_id):
                 user=batch.user, 
                 date=date_obj, 
                 amount=amount, 
-                description=clean_desc
+                description=clean_desc,
+                is_deleted=False
             ).exists():
                 continue
 

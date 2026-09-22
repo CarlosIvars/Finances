@@ -422,10 +422,12 @@ class SyncService:
 
                 # 3. Crear Transaction en api.models
                 tx_type = 'income' if bt.amount >= 0 else 'expense'
+                bank_client_id = f"bank_{bt.id}_{bt.external_transaction_id}"[:64]
                 new_tx = Transaction.objects.create(
                     user=user,
                     account=local_account,
                     category=category,
+                    client_id=bank_client_id,
                     date=bt.booking_date,
                     description=bt.description,
                     amount=bt.amount,

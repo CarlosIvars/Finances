@@ -105,7 +105,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        return Transaction.objects.filter(user=self.request.user).select_related('category', 'account')
+        return Transaction.objects.filter(user=self.request.user, is_deleted=False).select_related('category', 'account')
     
     def create(self, request, *args, **kwargs):
         logger.info(
@@ -119,7 +119,16 @@ class TransactionViewSet(viewsets.ModelViewSet):
         return super().create(request, *args, **kwargs)
     
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        import uuid
+        client_id = serializer.validated_data.get('client_id')
+        if not client_id:
+            client_id = f"web_{uuid.uuid4().hex}"
+        serializer.save(user=self.request.user, client_id=client_id)
+    
+    def perform_destroy(self, instance):
+        instance.is_deleted = True
+        instance.deleted_at = timezone.now()
+        instance.save(update_fields=['is_deleted', 'deleted_at', 'updated_at'])
     
     def partial_update(self, request, *args, **kwargs):
         response = super().partial_update(request, *args, **kwargs)
@@ -282,6 +291,7 @@ class BudgetViewSet(viewsets.ModelViewSet):
         # All expense transactions for the month
         expense_txs = Transaction.objects.filter(
             user=request.user,
+            is_deleted=False,
             type='expense',
             date__gte=month,
             date__lt=next_month
@@ -481,9 +491,18 @@ class SyncViewSet(viewsets.ViewSet):
             except ValueError:
                 return Response({'error': 'Invalid timestamp format'}, status=status.HTTP_400_BAD_REQUEST)
         
-        transactions = queryset.order_by('created_at')[:500]  # Limit to avoid huge responses
+        transactions_limit = 2000 if not since else 500
+        transactions = queryset.order_by('created_at')[:transactions_limit]  # Allow full history on initial/hard sync
         serializer = SyncTransactionSerializer(transactions, many=True)
         
+        # Collect deleted IDs for mobile synchronization
+        deleted_ids = list(
+            queryset.filter(is_deleted=True).values_list('id', flat=True)
+        )
+        deleted_client_ids = list(
+            queryset.filter(is_deleted=True).exclude(client_id__isnull=True).values_list('client_id', flat=True)
+        )
+
         # Also return categories (they don't change often, small payload)
         categories = Category.objects.filter(user=request.user).select_related('parent')
         categories_data = [
@@ -516,20 +535,44 @@ class SyncViewSet(viewsets.ViewSet):
         
         return Response({
             'transactions': serializer.data,
+            'deleted_ids': deleted_ids,
+            'deleted_client_ids': deleted_client_ids,
             'categories': categories_data,
             'budgets': budgets_data,
             'server_time': timezone.now().isoformat(),
-            'has_more': queryset.count() > 500,
+            'has_more': queryset.count() > transactions_limit,
         })
     
     @action(detail=False, methods=['post'])
     def push(self, request):
         """
         Push transactions from mobile to server.
-        Creates new transactions that don't exist on server.
+        Creates new transactions or updates existing ones.
+        Also accepts deleted_ids and deleted_client_ids for soft deletion.
         """
         transactions_data = request.data.get('transactions', [])
-        
+        deleted_ids = request.data.get('deleted_ids', [])
+        deleted_client_ids = request.data.get('deleted_client_ids', [])
+
+        # Process deletions from client
+        if isinstance(deleted_ids, list):
+            for del_id in deleted_ids:
+                if isinstance(del_id, int) or (isinstance(del_id, str) and del_id.isdigit()):
+                    Transaction.objects.filter(user=request.user, id=int(del_id), is_deleted=False).update(
+                        is_deleted=True, deleted_at=timezone.now(), updated_at=timezone.now()
+                    )
+                elif isinstance(del_id, str) and del_id:
+                    Transaction.objects.filter(user=request.user, client_id=del_id, is_deleted=False).update(
+                        is_deleted=True, deleted_at=timezone.now(), updated_at=timezone.now()
+                    )
+
+        if isinstance(deleted_client_ids, list):
+            for cid in deleted_client_ids:
+                if cid:
+                    Transaction.objects.filter(user=request.user, client_id=cid, is_deleted=False).update(
+                        is_deleted=True, deleted_at=timezone.now(), updated_at=timezone.now()
+                    )
+
         if not isinstance(transactions_data, list):
             return Response({'error': 'transactions must be a list'}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -546,27 +589,54 @@ class SyncViewSet(viewsets.ViewSet):
         for tx_data in transactions_data:
             try:
                 local_id = tx_data.get('local_id')
+                server_id = tx_data.get('server_id')
+                client_id = tx_data.get('client_id') or local_id
+
                 category = None
                 category_id = tx_data.get('category_id')
                 if category_id:
                     try:
                         category = Category.objects.get(id=category_id, user=request.user)
                     except Category.DoesNotExist:
-                        # Never attach a category belonging to another user.
                         category = None
                 
-                # Check if we already have this transaction (by checking if a transaction
-                # with the same description, date, and amount exists)
-                existing = Transaction.objects.filter(
-                    user=request.user,
-                    description=tx_data.get('description', ''),
-                    date=tx_data.get('date'),
-                    amount=tx_data.get('amount'),
-                ).first()
+                # Check if we already have this transaction:
+                # 1. By server_id
+                existing = None
+                if server_id and (isinstance(server_id, int) or (isinstance(server_id, str) and str(server_id).isdigit())):
+                    existing = Transaction.objects.filter(user=request.user, id=int(server_id)).first()
+
+                # 2. By client_id
+                if not existing and client_id:
+                    existing = Transaction.objects.filter(user=request.user, client_id=client_id).first()
+
+                # 3. Fallback: by date, description, amount
+                if not existing:
+                    existing = Transaction.objects.filter(
+                        user=request.user,
+                        description=tx_data.get('description', ''),
+                        date=tx_data.get('date'),
+                        amount=tx_data.get('amount'),
+                    ).first()
                 
                 if existing:
-                    # A local recategorisation is a real update, not a duplicate to ignore.
                     update_fields = []
+                    if client_id and not existing.client_id:
+                        existing.client_id = client_id
+                        update_fields.append('client_id')
+                    new_desc = tx_data.get('description')
+                    if new_desc and existing.description != new_desc:
+                        existing.description = new_desc
+                        update_fields.append('description')
+                    new_amt = tx_data.get('amount')
+                    if new_amt is not None and existing.amount != new_amt:
+                        existing.amount = new_amt
+                        existing.type = 'income' if float(new_amt) >= 0 else 'expense'
+                        update_fields.extend(['amount', 'type'])
+                    new_dt = tx_data.get('date')
+                    if new_dt and str(existing.date) != str(new_dt):
+                        existing.date = new_dt
+                        update_fields.append('date')
                     if tx_data.get('metadata') and not existing.metadata:
                         existing.metadata = tx_data.get('metadata')
                         update_fields.append('metadata')
@@ -577,10 +647,12 @@ class SyncViewSet(viewsets.ViewSet):
                     if update_fields:
                         update_fields.append('updated_at')
                         existing.save(update_fields=update_fields)
+
                     created.append({
                         'local_id': local_id,
+                        'client_id': existing.client_id,
                         'server_id': existing.id,
-                        'status': 'exists'
+                        'status': 'updated' if update_fields else 'exists'
                     })
                     continue
                 
@@ -589,17 +661,19 @@ class SyncViewSet(viewsets.ViewSet):
                     user=request.user,
                     account=account,
                     category=category,
+                    client_id=client_id,
                     date=tx_data.get('date'),
                     description=tx_data.get('description', ''),
                     amount=tx_data.get('amount'),
                     type=tx_data.get('type', 'expense'),
                     raw_data=tx_data.get('raw_data', ''),
                     metadata=tx_data.get('metadata', {}),
-                    is_pending=False,
+                    is_pending=category is None,
                 )
                 
                 created.append({
                     'local_id': local_id,
+                    'client_id': transaction.client_id,
                     'server_id': transaction.id,
                     'status': 'created'
                 })

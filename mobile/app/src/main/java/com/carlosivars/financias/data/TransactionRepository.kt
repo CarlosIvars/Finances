@@ -32,6 +32,8 @@ class TransactionRepository(context: Context) {
 
     suspend fun performSync(): com.carlosivars.financias.sync.SyncResult = syncManager.performFullSync()
 
+    suspend fun performHardSync(): com.carlosivars.financias.sync.SyncResult = syncManager.performHardSyncFromWeb()
+
     val activeConflict: kotlinx.coroutines.flow.StateFlow<com.carlosivars.financias.sync.MobileSyncConflict?> = 
         com.carlosivars.financias.sync.SyncManager.activeConflict
 
@@ -132,8 +134,17 @@ class TransactionRepository(context: Context) {
         rows > 0
     }
 
-    suspend fun deleteTransaction(id: String) {
-        transactionDao.deleteTransaction(id)
+    suspend fun deleteTransaction(id: String) = withContext(Dispatchers.IO) {
+        val tx = transactionDao.getRawTransactionById(id)
+        if (tx != null) {
+            if (tx.serverId != null || !tx.pendingSync) {
+                // Soft-delete para propagar la baja al servidor en la próxima sincronización
+                transactionDao.softDeleteTransaction(id, System.currentTimeMillis())
+            } else {
+                // Si nunca se subió al servidor y está pendiente, se purga directamente
+                transactionDao.purgeTransaction(id)
+            }
+        }
     }
 
     suspend fun clearAll() {

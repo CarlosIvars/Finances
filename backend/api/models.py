@@ -57,6 +57,9 @@ class Transaction(models.Model):
     import_batch = models.ForeignKey(ImportBatch, on_delete=models.SET_NULL, null=True, blank=True, related_name='transactions')
     
     is_pending = models.BooleanField(default=True, help_text="Requires manual review/categorization")
+    client_id = models.CharField(max_length=64, unique=True, null=True, blank=True, db_index=True)
+    is_deleted = models.BooleanField(default=False, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

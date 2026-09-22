@@ -80,62 +80,131 @@ class MockProvider(BankingProvider):
             date_from = date_to - timedelta(days=90)
 
         transactions = []
-        merchants = [
-            ("Mercadona", -150, -30, "GROCERIES"),
-            ("El Corte Inglés", -200, -50, "SHOPPING"),
-            ("Iberdrola", -120, -50, "UTILITIES"),
-            ("Vodafone", -80, -40, "UTILITIES"),
-            ("Repsol", -90, -40, "TRANSPORT"),
-            ("Zara", -150, -20, "SHOPPING"),
-            ("Glovo", -45, -15, "DINING"),
-            ("Uber", -35, -10, "TRANSPORT"),
-            ("Netflix", -15, -10, "ENTERTAINMENT"),
-            ("Spotify", -15, -10, "ENTERTAINMENT"),
-            ("Amazon", -150, -20, "SHOPPING"),
-            ("Carrefour", -180, -40, "GROCERIES"),
-            ("Lidl", -80, -20, "GROCERIES"),
-            ("Decathlon", -120, -30, "SHOPPING"),
-            ("IKEA", -300, -50, "SHOPPING"),
+        is_savings = account_external_id.endswith('_2') or 'savings' in account_external_id.lower()
+        is_credit = account_external_id.endswith('_3') or 'credit' in account_external_id.lower()
+
+        if is_savings:
+            # Cuenta Ahorro: intereses y traspasos
+            current_date = date_to
+            while current_date >= date_from and len(transactions) < 20:
+                if current_date.day == 1:
+                    tx_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{account_external_id}_{current_date}_intereses"))
+                    transactions.append(TransactionInfo(
+                        external_id=tx_id,
+                        booking_date=current_date,
+                        value_date=current_date,
+                        amount=Decimal("15.50"),
+                        currency="EUR",
+                        description="Liquidación de intereses",
+                        merchant_name="Banco Sabadell",
+                        category_code="INCOME"
+                    ))
+                elif current_date.day == 28:
+                    tx_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{account_external_id}_{current_date}_traspaso_in"))
+                    transactions.append(TransactionInfo(
+                        external_id=tx_id,
+                        booking_date=current_date,
+                        value_date=current_date,
+                        amount=Decimal("400.00"),
+                        currency="EUR",
+                        description="Traspaso recibido de Cuenta Nómina",
+                        merchant_name="Traspaso interno",
+                        category_code="INCOME"
+                    ))
+                current_date -= timedelta(days=1)
+
+            return transactions
+
+        if is_credit:
+            # Tarjeta de Crédito: compras de ocio, moda, restaurantes y gasolina
+            card_merchants = [
+                ("Zara", -65, -20, "SHOPPING"),
+                ("Glovo", -32, -15, "DINING"),
+                ("Repsol", -75, -35, "TRANSPORT"),
+                ("Uber", -25, -10, "TRANSPORT"),
+                ("Netflix", -17, -17, "ENTERTAINMENT"),
+                ("Spotify", -11, -11, "ENTERTAINMENT"),
+                ("Decathlon", -85, -25, "SHOPPING"),
+                ("El Corte Inglés", -120, -45, "SHOPPING"),
+            ]
+            current_date = date_to
+            while current_date >= date_from and len(transactions) < 35:
+                # 1 compra cada 2 días
+                if current_date.day % 2 == 0:
+                    idx = (current_date.day // 2) % len(card_merchants)
+                    merchant, min_amt, max_amt, cat = card_merchants[idx]
+                    fixed_amt = Decimal(str(min_amt + (abs(max_amt - min_amt) // 2))) + Decimal("0.50")
+                    tx_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{account_external_id}_{current_date}_{merchant}"))
+                    transactions.append(TransactionInfo(
+                        external_id=tx_id,
+                        booking_date=current_date,
+                        value_date=current_date,
+                        amount=fixed_amt,
+                        currency="EUR",
+                        description=f"Compra con tarjeta en {merchant}",
+                        merchant_name=merchant,
+                        category_code=cat
+                    ))
+                current_date -= timedelta(days=1)
+
+            return transactions
+
+        # Cuenta Nómina (Checking): nómina, recibos domésticos, supermercados y transferencias
+        checking_merchants = [
+            ("Mercadona", -110, -40, "GROCERIES"),
+            ("Iberdrola", -95, -60, "UTILITIES"),
+            ("Vodafone", -55, -35, "UTILITIES"),
+            ("Carrefour", -130, -50, "GROCERIES"),
+            ("Lidl", -70, -30, "GROCERIES"),
+            ("IKEA", -210, -80, "SHOPPING"),
         ]
 
         current_date = date_to
-        while current_date >= date_from and len(transactions) < 50:
-            # Añadir nómina una vez al mes
+        while current_date >= date_from and len(transactions) < 40:
             if current_date.day == 28:
-                salary_amount = Decimal("2850.00")
                 tx_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{account_external_id}_{current_date}_nomina"))
                 transactions.append(TransactionInfo(
                     external_id=tx_id,
                     booking_date=current_date,
                     value_date=current_date,
-                    amount=salary_amount,
+                    amount=Decimal("2850.00"),
                     currency="EUR",
                     description="Nómina",
                     merchant_name="Empresa SL",
                     category_code="INCOME"
                 ))
+            elif current_date.day == 29:
+                tx_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{account_external_id}_{current_date}_traspaso_out"))
+                transactions.append(TransactionInfo(
+                    external_id=tx_id,
+                    booking_date=current_date,
+                    value_date=current_date,
+                    amount=Decimal("-400.00"),
+                    currency="EUR",
+                    description="Traspaso enviado a Cuenta Ahorro",
+                    merchant_name="Traspaso interno",
+                    category_code="SHOPPING"
+                ))
 
-            # Añadir transacciones deterministas según la fecha
-            # Usar el día del mes para seleccionar comerciantes
-            day_mod = current_date.day % len(merchants)
-            merchant, min_amt, max_amt, cat = merchants[day_mod]
-            fixed_amt = Decimal(str(min_amt + (abs(max_amt - min_amt) // 2))) + Decimal("0.50")
-            
-            tx_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{account_external_id}_{current_date}_{merchant}"))
-            transactions.append(TransactionInfo(
-                external_id=tx_id,
-                booking_date=current_date,
-                value_date=current_date,
-                amount=fixed_amt,
-                currency="EUR",
-                description=f"Compra en {merchant}",
-                merchant_name=merchant,
-                category_code=cat
-            ))
-                
+            if current_date.day % 3 == 0:
+                idx = (current_date.day // 3) % len(checking_merchants)
+                merchant, min_amt, max_amt, cat = checking_merchants[idx]
+                fixed_amt = Decimal(str(min_amt + (abs(max_amt - min_amt) // 2))) + Decimal("0.50")
+                tx_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{account_external_id}_{current_date}_{merchant}"))
+                transactions.append(TransactionInfo(
+                    external_id=tx_id,
+                    booking_date=current_date,
+                    value_date=current_date,
+                    amount=fixed_amt,
+                    currency="EUR",
+                    description=f"Adeudo {merchant}",
+                    merchant_name=merchant,
+                    category_code=cat
+                ))
+
             current_date -= timedelta(days=1)
 
-        return transactions[:50]
+        return transactions
 
     def disconnect(self, connection_id: str) -> bool:
         return True

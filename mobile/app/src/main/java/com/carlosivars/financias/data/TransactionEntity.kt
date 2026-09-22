@@ -31,7 +31,9 @@ data class TransactionEntity(
     val rawText: String?,
     val metadataJson: String = "{}",
     val pendingSync: Boolean = true,
-    val serverId: Int? = null
+    val serverId: Int? = null,
+    val isDeleted: Boolean = false,
+    val updatedAt: Long = System.currentTimeMillis()
 ) {
     fun toDomain(): Transaction {
         val metaMap = mutableMapOf<String, String>()

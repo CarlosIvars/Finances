@@ -100,9 +100,57 @@ class SyncManager(private val context: Context) {
         }
     }
 
+    /**
+     * Ejecuta un Hard Push/Sobrescritura total desde la Web hacia la App móvil.
+     * Limpia la base de datos local de transacciones para eliminar cualquier residuo o inconsistencia
+     * y descarga todo el catálogo limpio y actualizado directamente desde el servidor web.
+     */
+    suspend fun performHardSyncFromWeb(): SyncResult = withContext(Dispatchers.IO) {
+        val serverUrl = securePrefs.cloudServerUrl.trim()
+        val authToken = securePrefs.cloudAuthToken.trim()
+
+        if (serverUrl.isBlank()) {
+            return@withContext SyncResult(
+                success = false,
+                message = "URL del servidor no configurada. Configure la URL en Ajustes."
+            )
+        }
+
+        val baseUrl = normalizeBaseUrl(serverUrl)
+
+        try {
+            // 1. Limpiar completamente la base de datos local de transacciones
+            transactionDao.clearAll()
+
+            // 2. Resetear el timestamp de última sincronización a 0 para forzar pull completo (since = null)
+            securePrefs.lastSyncTimestamp = 0L
+
+            // 3. Descargar todas las transacciones, categorías y presupuestos desde el servidor
+            val pulledCount = pullRemoteTransactions(baseUrl, authToken)
+
+            // 4. Actualizar timestamp de última sincronización
+            securePrefs.lastSyncTimestamp = System.currentTimeMillis()
+
+            SyncResult(
+                success = true,
+                pushedCount = 0,
+                pulledCount = pulledCount,
+                message = "Hard Push completado: $pulledCount transacciones descargadas limpiamente desde la web."
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error durante el hard sync: ${e.message}", e)
+            SyncResult(
+                success = false,
+                message = "Error en Hard Push: ${e.localizedMessage ?: "Fallo de conexión"}"
+            )
+        }
+    }
+
     private suspend fun pushPendingTransactions(baseUrl: String, authToken: String): Int {
         val pendingEntities = transactionDao.getPendingSyncTransactions()
-        if (pendingEntities.isEmpty()) return 0
+        val pendingDeleted = transactionDao.getPendingDeletedTransactions()
+
+        if (pendingEntities.isEmpty() && pendingDeleted.isEmpty()) return 0
 
         val pushUrl = "$baseUrl/api/sync/push/"
         val requestBody = JSONObject()
@@ -113,6 +161,10 @@ class SyncManager(private val context: Context) {
         for (item in pendingEntities) {
             val obj = JSONObject()
             obj.put("local_id", item.id)
+            obj.put("client_id", item.id)
+            if (item.serverId != null) {
+                obj.put("server_id", item.serverId)
+            }
             val isoDate = try {
                 dateFormat.format(Date(item.timestamp))
             } catch (_: Exception) {
@@ -141,6 +193,18 @@ class SyncManager(private val context: Context) {
         }
         requestBody.put("transactions", txArray)
 
+        // Enviar identificadores de transacciones eliminadas en el cliente
+        val deletedIdsArray = JSONArray()
+        val deletedClientIdsArray = JSONArray()
+        for (d in pendingDeleted) {
+            if (d.serverId != null) {
+                deletedIdsArray.put(d.serverId)
+            }
+            deletedClientIdsArray.put(d.id)
+        }
+        requestBody.put("deleted_ids", deletedIdsArray)
+        requestBody.put("deleted_client_ids", deletedClientIdsArray)
+
         val responseJson = postJson(pushUrl, requestBody.toString(), authToken)
         val createdArray = responseJson.optJSONArray("created") ?: JSONArray()
         var pushedSuccess = 0
@@ -153,6 +217,11 @@ class SyncManager(private val context: Context) {
                 transactionDao.markAsSynced(localId, serverId)
                 pushedSuccess++
             }
+        }
+
+        // Purgar localmente las transacciones eliminadas que han sido confirmadas por el servidor
+        for (d in pendingDeleted) {
+            transactionDao.markDeletedAsSynced(d.id)
         }
 
         return pushedSuccess
@@ -219,11 +288,38 @@ class SyncManager(private val context: Context) {
             budgetDao.replaceAll(serverBudgets)
         }
 
+        // Procesar bajas remotas notificadas por el servidor
+        val deletedIds = responseJson.optJSONArray("deleted_ids") ?: JSONArray()
+        for (i in 0 until deletedIds.length()) {
+            val sId = deletedIds.optInt(i, -1)
+            if (sId != -1) {
+                transactionDao.purgeByServerId(sId)
+            }
+        }
+        val deletedClientIds = responseJson.optJSONArray("deleted_client_ids") ?: JSONArray()
+        for (i in 0 until deletedClientIds.length()) {
+            val cId = deletedClientIds.optString(i, "")
+            if (cId.isNotEmpty()) {
+                transactionDao.purgeTransaction(cId)
+            }
+        }
+
         var pulledCount = 0
 
         for (i in 0 until txArray.length()) {
             val item = txArray.getJSONObject(i)
             val serverId = item.getInt("id")
+            val clientId = item.optString("client_id", "")
+            val isDeleted = item.optBoolean("is_deleted", false)
+
+            if (isDeleted) {
+                transactionDao.purgeByServerId(serverId)
+                if (clientId.isNotEmpty()) {
+                    transactionDao.purgeTransaction(clientId)
+                }
+                continue
+            }
+
             val desc = item.getString("description")
             val rawAmount = item.getDouble("amount")
             val amount = kotlin.math.abs(rawAmount)
@@ -232,9 +328,14 @@ class SyncManager(private val context: Context) {
             val categoryServerId = if (item.isNull("category")) null else item.optInt("category")
             val dateStr = item.optString("date", "")
 
-            val existing = transactionDao.getByServerId(serverId)
+            // Buscar por serverId o por clientId inmutable
+            var existing = transactionDao.getByServerId(serverId)
+            if (existing == null && clientId.isNotEmpty()) {
+                existing = transactionDao.getRawTransactionById(clientId)
+            }
+
             if (existing == null) {
-                val newLocalId = "srv_${serverId}_${System.currentTimeMillis()}"
+                val newLocalId = if (clientId.isNotEmpty()) clientId else "srv_${serverId}_${System.currentTimeMillis()}"
                 val hash = "server_sync_$serverId"
 
                 val metaObj = item.optJSONObject("metadata")
@@ -262,7 +363,8 @@ class SyncManager(private val context: Context) {
                     rawText = rawTxt,
                     metadataJson = metaJson,
                     pendingSync = false,
-                    serverId = serverId
+                    serverId = serverId,
+                    isDeleted = false
                 )
                 transactionDao.insertTransaction(entity)
                 pulledCount++
@@ -301,14 +403,15 @@ class SyncManager(private val context: Context) {
                         categoryServerId = categoryServerId,
                         parentCategory = parentCat,
                         date = dateStr,
-                        pendingSync = false
+                        serverId = serverId,
+                        pendingSync = false,
+                        isDeleted = false
                     )
                     transactionDao.updateTransaction(updated)
                     pulledCount++
                 }
             }
         }
-
         return pulledCount
     }
 

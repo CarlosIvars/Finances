@@ -41,24 +41,15 @@ class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         fields = [
-            'id', 'date', 'description', 'amount', 'type',
+            'id', 'client_id', 'date', 'description', 'amount', 'type',
             'category', 'category_name', 'parent_category_name', 'category_color', 'category_icon', 'account', 'account_name',
-            'raw_data', 'metadata', 'is_pending', 'import_batch', 'created_at'
+            'raw_data', 'metadata', 'is_pending', 'is_deleted', 'deleted_at', 'import_batch', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['user', 'created_at']
+        read_only_fields = ['user', 'created_at', 'updated_at']
 
     def validate_category(self, value):
-        """RGPD: Verificar que la categoría pertenece al usuario autenticado."""
-        request = self.context.get('request')
-        if value and request and value.user != request.user:
-            raise serializers.ValidationError('Categoría no válida.')
-        return value
-
-    def validate_account(self, value):
-        """RGPD: Verificar que la cuenta pertenece al usuario autenticado."""
-        request = self.context.get('request')
-        if value and request and value.user != request.user:
-            raise serializers.ValidationError('Cuenta no válida.')
+        if value and value.user != self.context['request'].user:
+            raise serializers.ValidationError("Categoría no válida para este usuario.")
         return value
 
 
@@ -66,20 +57,15 @@ class ImportBatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = ImportBatch
         fields = ['id', 'file', 'uploaded_at', 'status']
-        read_only_fields = ['user', 'uploaded_at', 'status']
 
 
 class ClassificationRuleSerializer(serializers.ModelSerializer):
+    category_name = serializers.ReadOnlyField(source='category.name')
+    category_color = serializers.ReadOnlyField(source='category.color')
+    
     class Meta:
         model = ClassificationRule
-        fields = ['id', 'keyword', 'category']
-
-    def validate_category(self, value):
-        """RGPD: Verificar que la categoría pertenece al usuario autenticado."""
-        request = self.context.get('request')
-        if value and request and value.user != request.user:
-            raise serializers.ValidationError('Categoría no válida.')
-        return value
+        fields = ['id', 'keyword', 'category', 'category_name', 'category_color']
 
 
 class AlertSerializer(serializers.ModelSerializer):
@@ -110,9 +96,9 @@ class SyncTransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         fields = [
-            'id', 'date', 'description', 'amount', 'type',
+            'id', 'client_id', 'date', 'description', 'amount', 'type',
             'category', 'category_name', 'parent_category_name', 'category_color', 'category_icon',
-            'raw_data', 'metadata', 'is_pending', 'created_at'
+            'raw_data', 'metadata', 'is_pending', 'is_deleted', 'deleted_at', 'created_at', 'updated_at'
         ]
 
 

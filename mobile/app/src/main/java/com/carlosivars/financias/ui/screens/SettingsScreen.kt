@@ -39,6 +39,9 @@ fun SettingsScreen(
     onPerformSync: suspend () -> com.carlosivars.financias.sync.SyncResult = {
         com.carlosivars.financias.sync.SyncResult(false, 0, 0, "No configurado")
     },
+    onPerformHardSync: suspend () -> com.carlosivars.financias.sync.SyncResult = {
+        com.carlosivars.financias.sync.SyncResult(false, 0, 0, "No configurado")
+    },
     onClearAllData: suspend () -> Unit,
     onOpenNotificationSettings: () -> Unit,
     onThemeChanged: (String) -> Unit = {}
@@ -73,7 +76,9 @@ fun SettingsScreen(
     var connectionTestResult by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
 
     var isPerformingSync by remember { mutableStateOf(false) }
+    var isPerformingHardSync by remember { mutableStateOf(false) }
     var syncResultMsg by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
+    var showHardSyncConfirmDialog by remember { mutableStateOf(false) }
 
     var showExportDialog by remember { mutableStateOf(false) }
     var exportJsonContent by remember { mutableStateOf("") }
@@ -610,7 +615,7 @@ fun SettingsScreen(
                                     isPerformingSync = false
                                 }
                             },
-                            enabled = !isPerformingSync && serverUrl.isNotBlank(),
+                            enabled = !isPerformingSync && !isPerformingHardSync && serverUrl.isNotBlank(),
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = IncomeGreen),
                             shape = RoundedCornerShape(12.dp)
@@ -623,6 +628,26 @@ fun SettingsScreen(
                                 Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Sincronizar Ahora con la Web", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+
+                        OutlinedButton(
+                            onClick = { showHardSyncConfirmDialog = true },
+                            enabled = !isPerformingSync && !isPerformingHardSync && serverUrl.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            if (isPerformingHardSync) {
+                                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Descargando todo desde la Web...", fontSize = 13.sp)
+                            } else {
+                                Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Hard Push: Web → App (Sobrescribir local)", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
 
@@ -1083,6 +1108,46 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showClearDataConfirmDialog = false }) {
+                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    // Modal Confirmar Hard Push Web -> App
+    if (showHardSyncConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showHardSyncConfirmDialog = false },
+            title = { Text("¿Hard Push de Web a App?", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "Esta acción limpiará todas las transacciones locales en este móvil y descargará limpiamente todo el historial y categorías de la Web sin dejar residuos ni duplicados.\n\nIdeal para resolver inconsistencias o desajustes entre la Web y la App.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 13.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showHardSyncConfirmDialog = false
+                        coroutineScope.launch {
+                            isPerformingHardSync = true
+                            syncResultMsg = null
+                            val res = onPerformHardSync()
+                            syncResultMsg = res.success to res.message
+                            isPerformingHardSync = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Ejecutar Hard Push", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showHardSyncConfirmDialog = false }) {
                     Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },

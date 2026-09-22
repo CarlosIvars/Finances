@@ -38,7 +38,7 @@ _allowed_hosts_env = os.environ.get('ALLOWED_HOSTS')
 if _allowed_hosts_env:
     ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(',') if h.strip()]
 else:
-    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.118', '.trycloudflare.com']
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.118', '.trycloudflare.com', 'testserver']
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip() for origin in os.environ.get(
