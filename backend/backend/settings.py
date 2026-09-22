@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     # Local
     'api',
     'banking',
+    'documents',
 ]
 
 MIDDLEWARE = [
@@ -78,17 +79,30 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'api.middleware.AuditMiddleware',  # RGPD: audit logging
+    'api.middleware.SecurityHeadersMiddleware',  # CSP & Security Headers
 ]
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
+CORS_ALLOW_CREDENTIALS = True
+
+# Session & Cookie Hardening (RFC 10017 / BFF Architecture)
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_AGE = 86400 * 7  # 7 días
+SESSION_SAVE_EVERY_REQUEST = False
+
+# CSRF Cookie Hardening (Double-submit para SPA)
+CSRF_COOKIE_HTTPONLY = False  # Permite a la SPA enviar X-CSRFToken
+CSRF_COOKIE_SAMESITE = 'Lax'
 
 # REST Framework configuration - SECURITY: Require authentication + rate limiting
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',  # SECURITY: Require auth
@@ -212,10 +226,14 @@ else:
 
 # Whitenoise: compressed + cached static files
 STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
     'staticfiles': {
         'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
     },
 }
+
 
 # Media files (uploads)
 MEDIA_URL = '/media/'
@@ -227,9 +245,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # RGPD & SECURITY — Production settings
 # ==========================================
 
-if not DEBUG:
-    # Force HTTPS
-    SECURE_SSL_REDIRECT = True
+import sys
+TESTING = 'test' in sys.argv
+
+if not DEBUG and not TESTING:
+    # Force HTTPS in real production
+    SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'true').lower() == 'true'
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
     # HSTS (HTTP Strict Transport Security)
@@ -244,12 +265,12 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
-    CSRF_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_HTTPONLY = False  # SPA double-submit
     SESSION_COOKIE_SAMESITE = 'Lax'
     CSRF_COOKIE_SAMESITE = 'Lax'
 
     # Update ALLOWED_HOSTS for production (override with env var)
-    ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
+    ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
 
 # Open Banking Configuration
 BANKING_PROVIDER = os.environ.get('BANKING_PROVIDER', 'mock')
@@ -257,6 +278,16 @@ BANKING_ENCRYPTION_KEY = os.environ.get(
     'BANKING_ENCRYPTION_KEY',
     'm19gWLQ7EBRnXaUTf5heiZTNrVkvf1L6ehTFajLE1tk='
 )
+
+# Google OAuth & Documents Storage Configuration
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+GOOGLE_REDIRECT_URI = os.environ.get(
+    'GOOGLE_REDIRECT_URI',
+    'http://localhost:8000/api/documents/gmail/callback/'
+)
+STORAGE_BACKEND = os.environ.get('STORAGE_BACKEND', 'local')
+
 
 # ==========================================
 # Structured Logging (RGPD: no sensitive data in logs)

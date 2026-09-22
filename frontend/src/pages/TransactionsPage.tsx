@@ -1,7 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Card } from '../components/ui/Card';
-import { Search, Check, X, ChevronUp, ChevronDown, Filter, Calendar, Info, CreditCard } from 'lucide-react';
-import { getCategories, updateTransaction } from '../services/api';
+import {
+    Search, Check, X, ChevronUp, ChevronDown, Filter, Calendar,
+    FileText, Calculator, SlidersHorizontal, BookmarkPlus
+} from 'lucide-react';
+import { getCategories, updateTransaction, createTaxPreset } from '../services/api';
 import { TransactionDetailModal } from '../components/TransactionDetailModal';
 import { CategoryBadge } from '../components/CategoryBadge';
 
@@ -18,12 +21,26 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
     const [filterType, setFilterType] = useState('all');
     const [filterCategory, setFilterCategory] = useState('all');
     const [filterMonth, setFilterMonth] = useState('all');
+
+    // Filtros avanzados (Facturas e IRPF)
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+    const [filterHasDocument, setFilterHasDocument] = useState('all'); // 'all' | 'with_doc' | 'without_doc'
+    const [filterTaxDeductible, setFilterTaxDeductible] = useState('all'); // 'all' | 'deductible' | 'non_deductible'
+    const [filterTaxYear, setFilterTaxYear] = useState('all');
+    const [minAmount, setMinAmount] = useState('');
+    const [maxAmount, setMaxAmount] = useState('');
+
     const [sortField, setSortField] = useState<SortField>('date');
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
     const [categories, setCategories] = useState<any[]>([]);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
     const [detailTransaction, setDetailTransaction] = useState<any | null>(null);
+
+    // Modal guardar preset
+    const [showSavePresetModal, setShowSavePresetModal] = useState(false);
+    const [presetName, setPresetName] = useState('');
+    const [presetAeatBox, setPresetAeatBox] = useState('');
 
     useEffect(() => {
         getCategories().then(setCategories).catch(console.error);
@@ -37,6 +54,16 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
             months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
         });
         return Array.from(months).sort().reverse();
+    }, [transactions]);
+
+    // Available years
+    const availableYears = useMemo(() => {
+        const years = new Set<number>();
+        transactions.forEach(t => {
+            const d = new Date(t.date);
+            years.add(t.tax_year || d.getFullYear());
+        });
+        return Array.from(years).sort().reverse();
     }, [transactions]);
 
     const filteredAndSorted = useMemo(() => {
@@ -61,7 +88,38 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                 matchesMonth = txMonth === filterMonth;
             }
 
-            return matchesSearch && matchesType && matchesCategory && matchesMonth;
+            // Factura adjunta filter
+            let matchesDoc = true;
+            const hasDoc = Boolean(t.has_document || (t.documents_count && t.documents_count > 0));
+            if (filterHasDocument === 'with_doc') {
+                matchesDoc = hasDoc;
+            } else if (filterHasDocument === 'without_doc') {
+                matchesDoc = !hasDoc;
+            }
+
+            // Deducible IRPF filter
+            let matchesDeductible = true;
+            if (filterTaxDeductible === 'deductible') {
+                matchesDeductible = Boolean(t.is_tax_deductible);
+            } else if (filterTaxDeductible === 'non_deductible') {
+                matchesDeductible = !t.is_tax_deductible;
+            }
+
+            // Tax year filter
+            let matchesTaxYear = true;
+            if (filterTaxYear !== 'all') {
+                const effectiveYear = t.tax_year || new Date(t.date).getFullYear();
+                matchesTaxYear = String(effectiveYear) === filterTaxYear;
+            }
+
+            // Min & Max amount filter
+            let matchesAmount = true;
+            const absAmt = Math.abs(parseFloat(t.amount));
+            if (minAmount && absAmt < parseFloat(minAmount)) matchesAmount = false;
+            if (maxAmount && absAmt > parseFloat(maxAmount)) matchesAmount = false;
+
+            return matchesSearch && matchesType && matchesCategory && matchesMonth &&
+                matchesDoc && matchesDeductible && matchesTaxYear && matchesAmount;
         });
 
         // Sort
@@ -85,7 +143,11 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
         });
 
         return result;
-    }, [transactions, searchTerm, filterType, filterCategory, filterMonth, sortField, sortOrder]);
+    }, [
+        transactions, searchTerm, filterType, filterCategory, filterMonth,
+        filterHasDocument, filterTaxDeductible, filterTaxYear, minAmount, maxAmount,
+        sortField, sortOrder
+    ]);
 
     const handleSort = (field: SortField) => {
         if (sortField === field) {
@@ -113,6 +175,33 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
         }
     };
 
+    const handleSaveAsTaxPreset = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!presetName.trim()) return;
+
+        try {
+            await createTaxPreset({
+                name: presetName,
+                aeat_box: presetAeatBox,
+                filters: {
+                    category: filterCategory !== 'all' ? filterCategory : undefined,
+                    type: filterType !== 'all' ? filterType : undefined,
+                    has_document: filterHasDocument !== 'all' ? filterHasDocument === 'with_doc' : undefined,
+                    is_tax_deductible: filterTaxDeductible !== 'all' ? filterTaxDeductible === 'deductible' : undefined,
+                    min_amount: minAmount ? parseFloat(minAmount) : undefined,
+                    max_amount: maxAmount ? parseFloat(maxAmount) : undefined,
+                }
+            });
+            setShowSavePresetModal(false);
+            setPresetName('');
+            setPresetAeatBox('');
+            alert('¡Filtro guardado exitosamente como preset fiscal!');
+        } catch (err) {
+            console.error('Error guardando preset:', err);
+            alert('Error al guardar el preset');
+        }
+    };
+
     // Get unique categories for filter
     const uniqueCategories = useMemo(() => {
         const cats = new Set<string>();
@@ -133,61 +222,154 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
 
             {/* Filters Row */}
             <Card>
-                <div className="flex flex-wrap gap-3.5 items-center">
-                    <Filter size={18} className="text-muted-foreground" />
+                <div className="space-y-3.5">
+                    <div className="flex flex-wrap gap-3.5 items-center">
+                        <Filter size={18} className="text-muted-foreground" />
 
-                    {/* Search */}
-                    <div className="relative flex-1 min-w-[200px]">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-                        <input
-                            type="text"
-                            placeholder="Buscar concepto..."
-                            className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-xl text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
+                        {/* Search */}
+                        <div className="relative flex-1 min-w-[200px]">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                            <input
+                                type="text"
+                                placeholder="Buscar concepto..."
+                                className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-xl text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
 
-                    {/* Month Filter */}
-                    <div className="flex items-center gap-2">
-                        <Calendar size={16} className="text-muted-foreground" />
+                        {/* Month Filter */}
+                        <div className="flex items-center gap-2">
+                            <Calendar size={16} className="text-muted-foreground" />
+                            <select
+                                value={filterMonth}
+                                onChange={(e) => setFilterMonth(e.target.value)}
+                                className="appearance-none bg-background border border-border rounded-xl px-3.5 py-2 text-foreground text-sm shadow-sm cursor-pointer hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                            >
+                                <option value="all">Todos los meses</option>
+                                {availableMonths.map(m => {
+                                    const [year, month] = m.split('-');
+                                    const label = new Date(Number(year), Number(month) - 1).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
+                                    return <option key={m} value={m}>{label}</option>;
+                                })}
+                            </select>
+                        </div>
+
+                        {/* Type Filter */}
                         <select
-                            value={filterMonth}
-                            onChange={(e) => setFilterMonth(e.target.value)}
+                            value={filterType}
+                            onChange={(e) => setFilterType(e.target.value)}
                             className="appearance-none bg-background border border-border rounded-xl px-3.5 py-2 text-foreground text-sm shadow-sm cursor-pointer hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                         >
-                            <option value="all">Todos los meses</option>
-                            {availableMonths.map(m => {
-                                const [year, month] = m.split('-');
-                                const label = new Date(Number(year), Number(month) - 1).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
-                                return <option key={m} value={m}>{label}</option>;
-                            })}
+                            <option value="all">Todos los tipos</option>
+                            <option value="income">Ingresos</option>
+                            <option value="expense">Gastos</option>
                         </select>
+
+                        {/* Category Filter */}
+                        <select
+                            value={filterCategory}
+                            onChange={(e) => setFilterCategory(e.target.value)}
+                            className="appearance-none bg-background border border-border rounded-xl px-3.5 py-2 text-foreground text-sm shadow-sm cursor-pointer hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                        >
+                            <option value="all">Todas las categorías</option>
+                            <option value="pending">⚠️ Sin categoría</option>
+                            {uniqueCategories.map(c => (
+                                <option key={c} value={c}>{c}</option>
+                            ))}
+                        </select>
+
+                        {/* Toggle Advanced Filters */}
+                        <button
+                            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-xl border transition-all ${
+                                showAdvancedFilters
+                                    ? 'bg-primary/10 text-primary border-primary/30'
+                                    : 'bg-background border-border text-muted-foreground hover:text-foreground'
+                            }`}
+                        >
+                            <SlidersHorizontal size={15} />
+                            <span>Filtros IRPF / Facturas</span>
+                        </button>
                     </div>
 
-                    {/* Type Filter */}
-                    <select
-                        value={filterType}
-                        onChange={(e) => setFilterType(e.target.value)}
-                        className="appearance-none bg-background border border-border rounded-xl px-3.5 py-2 text-foreground text-sm shadow-sm cursor-pointer hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    >
-                        <option value="all">Todos los tipos</option>
-                        <option value="income">Ingresos</option>
-                        <option value="expense">Gastos</option>
-                    </select>
+                    {/* Collapsible Advanced Filters Bar */}
+                    {showAdvancedFilters && (
+                        <div className="pt-3 border-t border-border/60 flex flex-wrap gap-3 items-center justify-between animate-in fade-in duration-200">
+                            <div className="flex flex-wrap gap-3 items-center">
+                                {/* Factura Filter */}
+                                <div className="flex items-center gap-1.5">
+                                    <FileText size={15} className="text-primary" />
+                                    <select
+                                        value={filterHasDocument}
+                                        onChange={(e) => setFilterHasDocument(e.target.value)}
+                                        className="bg-background border border-border rounded-xl px-3 py-1.5 text-xs text-foreground focus:outline-none"
+                                    >
+                                        <option value="all">Todas (con/sin factura)</option>
+                                        <option value="with_doc">📄 Solo con factura</option>
+                                        <option value="without_doc">❌ Sin factura</option>
+                                    </select>
+                                </div>
 
-                    {/* Category Filter */}
-                    <select
-                        value={filterCategory}
-                        onChange={(e) => setFilterCategory(e.target.value)}
-                        className="appearance-none bg-background border border-border rounded-xl px-3.5 py-2 text-foreground text-sm shadow-sm cursor-pointer hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                    >
-                        <option value="all">Todas las categorías</option>
-                        <option value="pending">⚠️ Sin categoría</option>
-                        {uniqueCategories.map(c => (
-                            <option key={c} value={c}>{c}</option>
-                        ))}
-                    </select>
+                                {/* IRPF Deducible Filter */}
+                                <div className="flex items-center gap-1.5">
+                                    <Calculator size={15} className="text-emerald-500" />
+                                    <select
+                                        value={filterTaxDeductible}
+                                        onChange={(e) => setFilterTaxDeductible(e.target.value)}
+                                        className="bg-background border border-border rounded-xl px-3 py-1.5 text-xs text-foreground focus:outline-none"
+                                    >
+                                        <option value="all">Todos (IRPF)</option>
+                                        <option value="deductible">✅ Solo deducibles IRPF</option>
+                                        <option value="non_deductible">No deducibles</option>
+                                    </select>
+                                </div>
+
+                                {/* Tax Year Filter */}
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-xs text-muted-foreground font-semibold">Año fiscal:</span>
+                                    <select
+                                        value={filterTaxYear}
+                                        onChange={(e) => setFilterTaxYear(e.target.value)}
+                                        className="bg-background border border-border rounded-xl px-3 py-1.5 text-xs text-foreground focus:outline-none"
+                                    >
+                                        <option value="all">Cualquier año</option>
+                                        {availableYears.map(y => (
+                                            <option key={y} value={String(y)}>{y}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Importe Min - Max */}
+                                <div className="flex items-center gap-1.5">
+                                    <input
+                                        type="number"
+                                        placeholder="Mín €"
+                                        value={minAmount}
+                                        onChange={(e) => setMinAmount(e.target.value)}
+                                        className="w-20 bg-background border border-border rounded-xl px-2.5 py-1 text-xs text-foreground focus:outline-none"
+                                    />
+                                    <span className="text-xs text-muted-foreground">-</span>
+                                    <input
+                                        type="number"
+                                        placeholder="Máx €"
+                                        value={maxAmount}
+                                        onChange={(e) => setMaxAmount(e.target.value)}
+                                        className="w-20 bg-background border border-border rounded-xl px-2.5 py-1 text-xs text-foreground focus:outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setShowSavePresetModal(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary hover:bg-secondary/80 text-foreground text-xs font-medium rounded-xl border border-border transition-all"
+                                title="Guardar esta combinación de filtros como preset fiscal"
+                            >
+                                <BookmarkPlus size={14} className="text-primary" />
+                                <span>Guardar como Preset Fiscal</span>
+                            </button>
+                        </div>
+                    )}
                 </div>
             </Card>
 
@@ -237,8 +419,8 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                         <tbody className="divide-y divide-border/60">
                             {filteredAndSorted.map((t) => {
                                 const cardTag = t.metadata?.card || t.metadata?.card_masked || t.metadata?.card_last4;
-                                const hasMetadata = t.metadata && Object.keys(t.metadata).length > 0;
-                                
+                                const hasDoc = Boolean(t.has_document || (t.documents_count && t.documents_count > 0));
+
                                 return (
                                 <tr 
                                     key={t.id} 
@@ -249,105 +431,178 @@ export function TransactionsPage({ transactions, onTransactionUpdated }: Transac
                                         setDetailTransaction(t);
                                     }}
                                 >
-                                    <td className="px-6 py-4 font-medium text-muted-foreground whitespace-nowrap">
+                                    <td className="px-6 py-4 text-muted-foreground whitespace-nowrap text-xs">
                                         {new Date(t.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="flex flex-col">
-                                            <div className="max-w-sm truncate text-foreground font-medium group-hover:text-primary transition-colors flex items-center gap-2">
+                                        <div className="flex flex-col gap-1">
+                                            <div className="font-medium text-foreground text-sm flex items-center gap-2">
                                                 <span>{t.description}</span>
                                                 {cardTag && (
-                                                    <span className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded-lg bg-secondary text-muted-foreground border border-border/70" title={`Tarjeta: ${cardTag}`}>
-                                                        <CreditCard size={12} />
-                                                        {cardTag.includes('••') ? cardTag.substring(cardTag.indexOf('••')) : cardTag}
+                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border border-border/40">
+                                                        {cardTag}
+                                                    </span>
+                                                )}
+                                                {hasDoc && (
+                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20" title="Factura adjunta">
+                                                        <FileText size={11} /> Factura
+                                                    </span>
+                                                )}
+                                                {t.is_tax_deductible && (
+                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" title="Deducible IRPF">
+                                                        <Calculator size={11} /> IRPF
                                                     </span>
                                                 )}
                                             </div>
-                                            {t.metadata?.original_date && (
-                                                <span className="text-[11px] text-muted-foreground mt-0.5">
-                                                    Op: {t.metadata.original_date}
-                                                </span>
-                                            )}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-6 py-4 whitespace-nowrap">
                                         {editingId === t.id ? (
-                                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                                                 <select
-                                                    className="appearance-none bg-background border border-border shadow-sm rounded-xl px-2.5 py-1 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                                                     value={selectedCategory || ''}
                                                     onChange={(e) => setSelectedCategory(Number(e.target.value))}
+                                                    className="bg-background border border-primary rounded-lg px-2.5 py-1 text-xs text-foreground focus:outline-none shadow-sm"
+                                                    autoFocus
                                                 >
                                                     <option value="">Seleccionar...</option>
-                                                    {categories.map((c) => (
-                                                        <option key={c.id} value={c.id}>
-                                                            {c.parent_name ? `${c.parent_name} › ${c.name}` : c.name}
-                                                        </option>
+                                                    {categories.map(c => (
+                                                        <option key={c.id} value={c.id}>{c.name}</option>
                                                     ))}
                                                 </select>
-                                                <button onClick={() => handleCategoryChange(t.id)} className="text-emerald-500 hover:text-emerald-400 p-1">
-                                                    <Check size={16} />
+                                                <button
+                                                    onClick={() => handleCategoryChange(t.id)}
+                                                    className="p-1 text-emerald-500 hover:bg-emerald-500/10 rounded"
+                                                >
+                                                    <Check size={14} />
                                                 </button>
-                                                <button onClick={() => { setEditingId(null); setSelectedCategory(null); }} className="text-red-500 hover:text-red-400 p-1">
-                                                    <X size={16} />
+                                                <button
+                                                    onClick={() => { setEditingId(null); setSelectedCategory(null); }}
+                                                    className="p-1 text-destructive hover:bg-destructive/10 rounded"
+                                                >
+                                                    <X size={14} />
                                                 </button>
                                             </div>
                                         ) : (
-                                            <CategoryBadge
-                                                categoryName={t.category_name}
-                                                parentCategoryName={t.parent_category_name}
-                                                categoryColor={t.category_color}
-                                                categoryIcon={t.category_icon}
-                                                categoryId={t.category}
-                                                categories={categories}
-                                                onClick={(e) => { 
+                                            <div
+                                                onClick={(e) => {
                                                     e.stopPropagation();
-                                                    setEditingId(t.id); 
-                                                    setSelectedCategory(t.category); 
+                                                    setEditingId(t.id);
+                                                    setSelectedCategory(t.category);
                                                 }}
-                                            />
+                                                className="cursor-pointer inline-block"
+                                                title="Haz clic para cambiar categoría"
+                                            >
+                                                <CategoryBadge
+                                                    categoryName={t.category_name}
+                                                    parentCategoryName={t.parent_category_name}
+                                                    categoryColor={t.category_color}
+                                                    categoryIcon={t.category_icon}
+                                                    categoryId={t.category}
+                                                    categories={categories}
+                                                    size="sm"
+                                                />
+                                            </div>
                                         )}
                                     </td>
-                                    <td className={`px-6 py-4 text-right font-semibold tabular-nums ${t.type === 'income' ? 'text-income' : 'text-foreground'}`}>
-                                        {t.type === 'income' ? '+' : '-'}{Math.abs(t.amount).toFixed(2)} €
+                                    <td className="px-6 py-4 text-right whitespace-nowrap">
+                                        <span className={`font-sans font-bold tabular-nums text-sm ${
+                                            t.type === 'income' 
+                                                ? 'text-income' 
+                                                : 'text-foreground'
+                                        }`}>
+                                            {t.type === 'income' ? '+' : '-'}{Math.abs(t.amount).toFixed(2)} €
+                                        </span>
                                     </td>
                                     <td className="px-4 py-4 text-center">
-                                        <button
+                                        <button 
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 setDetailTransaction(t);
                                             }}
-                                            className={`p-1.5 rounded-xl transition-colors ${hasMetadata ? 'text-primary hover:bg-primary/10' : 'text-muted-foreground hover:bg-secondary'}`}
-                                            title="Ver detalles y metadatos de la notificación"
+                                            className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-secondary transition-colors"
+                                            title="Ver detalles completos"
                                         >
-                                            <Info size={16} />
+                                            <ChevronDown size={14} />
                                         </button>
                                     </td>
                                 </tr>
                             );
                             })}
-                            {filteredAndSorted.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center">
-                                        <p className="text-muted-foreground">No se encontraron movimientos con estos filtros.</p>
-                                    </td>
-                                </tr>
-                            )}
                         </tbody>
                     </table>
                 </div>
+
+                {filteredAndSorted.length === 0 && (
+                    <div className="text-center py-16 text-muted-foreground">
+                        <p className="text-sm">No se encontraron movimientos con los filtros seleccionados.</p>
+                    </div>
+                )}
             </Card>
 
-            {/* Transaction Detail Modal */}
+            {/* Modal Detalle Transacción */}
             {detailTransaction && (
                 <TransactionDetailModal
                     transaction={detailTransaction}
                     categories={categories}
                     onClose={() => setDetailTransaction(null)}
-                    onUpdated={() => {
-                        if (onTransactionUpdated) onTransactionUpdated();
-                    }}
+                    onUpdated={onTransactionUpdated}
                 />
+            )}
+
+            {/* Modal Guardar Preset */}
+            {showSavePresetModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="glass-card border border-border/80 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-border/60">
+                            <h3 className="text-base font-bold text-foreground">Guardar Filtro como Preset Fiscal</h3>
+                            <button onClick={() => setShowSavePresetModal(false)} className="text-muted-foreground hover:text-foreground">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveAsTaxPreset} className="space-y-4">
+                            <div>
+                                <label className="text-xs font-semibold text-muted-foreground block mb-1">Nombre del Preset</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={presetName}
+                                    onChange={(e) => setPresetName(e.target.value)}
+                                    placeholder="Ej. Cuotas sindicales y colegiales"
+                                    className="w-full bg-background border border-border rounded-xl px-3.5 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-semibold text-muted-foreground block mb-1">Casilla AEAT (opcional)</label>
+                                <input
+                                    type="text"
+                                    value={presetAeatBox}
+                                    onChange={(e) => setPresetAeatBox(e.target.value)}
+                                    placeholder="Ej. Casilla 0014: Cuotas a sindicatos"
+                                    className="w-full bg-background border border-border rounded-xl px-3.5 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowSavePresetModal(false)}
+                                    className="px-4 py-2 bg-secondary text-foreground text-sm font-medium rounded-xl hover:bg-secondary/80"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-xl hover:bg-primary/90 shadow-sm"
+                                >
+                                    Guardar Preset
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             )}
         </div>
     );

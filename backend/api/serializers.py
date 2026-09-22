@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Account, Category, Transaction, ImportBatch, ClassificationRule, Alert, Budget
+from .models import Account, Category, Transaction, ImportBatch, ClassificationRule, Alert, Budget, TaxFilterPreset
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -8,7 +8,10 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ['id', 'name', 'parent', 'parent_name', 'color', 'icon', 'is_income', 'subcategories']
+        fields = [
+            'id', 'name', 'parent', 'parent_name', 'color', 'icon', 'is_income',
+            'aeat_code', 'tax_deductible', 'subcategories'
+        ]
         # RGPD: 'user' field excluded — never expose user ID to client
 
     def get_subcategories(self, obj):
@@ -37,20 +40,45 @@ class TransactionSerializer(serializers.ModelSerializer):
     category_color = serializers.ReadOnlyField(source='category.color')
     category_icon = serializers.ReadOnlyField(source='category.icon')
     account_name = serializers.ReadOnlyField(source='account.name')
+    effective_tax_year = serializers.ReadOnlyField()
+    has_document = serializers.SerializerMethodField()
+    documents_count = serializers.SerializerMethodField()
+    document_ids = serializers.SerializerMethodField()
 
     class Meta:
         model = Transaction
         fields = [
             'id', 'client_id', 'date', 'description', 'amount', 'type',
             'category', 'category_name', 'parent_category_name', 'category_color', 'category_icon', 'account', 'account_name',
-            'raw_data', 'metadata', 'is_pending', 'is_deleted', 'deleted_at', 'import_batch', 'created_at', 'updated_at'
+            'raw_data', 'metadata', 'is_pending', 'is_deleted', 'deleted_at', 'import_batch',
+            'tax_year', 'effective_tax_year', 'is_tax_deductible', 'tax_tags',
+            'has_document', 'documents_count', 'document_ids',
+            'created_at', 'updated_at'
         ]
         read_only_fields = ['user', 'created_at', 'updated_at']
+
+    def get_has_document(self, obj):
+        return obj.documents.exists() if hasattr(obj, 'documents') else False
+
+    def get_documents_count(self, obj):
+        return obj.documents.count() if hasattr(obj, 'documents') else 0
+
+    def get_document_ids(self, obj):
+        return list(obj.documents.values_list('id', flat=True)) if hasattr(obj, 'documents') else []
 
     def validate_category(self, value):
         if value and value.user != self.context['request'].user:
             raise serializers.ValidationError("Categoría no válida para este usuario.")
         return value
+
+
+class TaxFilterPresetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TaxFilterPreset
+        fields = [
+            'id', 'name', 'aeat_box', 'filters', 'is_system_preset', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['user', 'created_at', 'updated_at']
 
 
 class ImportBatchSerializer(serializers.ModelSerializer):

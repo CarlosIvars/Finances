@@ -20,6 +20,8 @@ class Category(models.Model):
     color = models.CharField(max_length=7, default='#cccccc') # Hex color
     icon = models.CharField(max_length=40, default='credit_card')
     is_income = models.BooleanField(default=False) # True for Income categories, False for Expense
+    aeat_code = models.CharField(max_length=50, blank=True, null=True, help_text="Código casilla AEAT (ej. DONACION_0722, ALQUILER_0102)")
+    tax_deductible = models.BooleanField(default=False, help_text="Indica si esta categoría desgrava o deduce en el IRPF")
     
     class Meta:
         verbose_name_plural = "Categories"
@@ -60,11 +62,39 @@ class Transaction(models.Model):
     client_id = models.CharField(max_length=64, unique=True, null=True, blank=True, db_index=True)
     is_deleted = models.BooleanField(default=False, db_index=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    
+    # IRPF / Fiscal fields
+    tax_year = models.IntegerField(null=True, blank=True, help_text="Ejercicio fiscal (ej. 2025). Si está vacío se asume el año de la fecha.")
+    is_tax_deductible = models.BooleanField(default=False, help_text="Marcado explícito como deducible en IRPF")
+    tax_tags = models.JSONField(default=list, blank=True, help_text="Etiquetas fiscales (ej. ['Renta2025', 'DonacionCruzRoja'])")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def effective_tax_year(self):
+        return self.tax_year if self.tax_year else (self.date.year if self.date else None)
+
     def __str__(self):
         return f"{self.date} - {self.description} : {self.amount} ({self.type})"
+
+
+class TaxFilterPreset(models.Model):
+    """Presets de filtros fiscales para la Declaración de la Renta (AEAT y personalizados)"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tax_presets', null=True, blank=True)
+    name = models.CharField(max_length=150)
+    aeat_box = models.CharField(max_length=150, blank=True, help_text="Referencia a la casilla AEAT (ej. Casilla 722)")
+    filters = models.JSONField(default=dict, blank=True, help_text="Configuración de filtros JSON")
+    is_system_preset = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-is_system_preset', 'name']
+
+    def __str__(self):
+        return f"{self.name} ({self.aeat_box})" if self.aeat_box else self.name
+
 
 class ClassificationRule(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rules')
@@ -220,6 +250,8 @@ class AuditLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     details = models.JSONField(null=True, blank=True, help_text="Metadata no sensible sobre la acción")
+    previous_hash = models.CharField(max_length=64, blank=True, default='', help_text="Hash SHA-256 del registro anterior")
+    event_hash = models.CharField(max_length=64, blank=True, default='', db_index=True, help_text="Hash SHA-256 de este evento")
 
     class Meta:
         ordering = ['-timestamp']
@@ -230,5 +262,69 @@ class AuditLog(models.Model):
         verbose_name = "Registro de auditoría"
         verbose_name_plural = "Registros de auditoría"
 
+    def save(self, *args, **kwargs):
+        from django.core.exceptions import PermissionDenied
+        import hashlib
+        import json
+
+        if self.pk:
+            raise PermissionDenied("Los registros de auditoría son inmutables (append-only). No se permiten modificaciones.")
+
+        last_log = AuditLog.objects.order_by('-id').first()
+        self.previous_hash = last_log.event_hash if (last_log and last_log.event_hash) else "0" * 64
+
+        details_str = json.dumps(self.details, sort_keys=True) if self.details else ""
+        raw_data = f"{self.previous_hash}:{self.user_id}:{self.action}:{self.resource}:{details_str}"
+        self.event_hash = hashlib.sha256(raw_data.encode('utf-8')).hexdigest()
+
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("Los registros de auditoría no pueden ser eliminados (append-only).")
+
+    @classmethod
+    def verify_chain_integrity(cls) -> tuple:
+        """
+        Verifica criptográficamente que la cadena de hashes de auditoría no ha sido manipulada.
+        Retorna (is_valid: bool, tampered_id: Optional[int]).
+        """
+        logs = cls.objects.order_by('id')
+        prev_hash = "0" * 64
+        import hashlib
+        import json
+
+        for log in logs:
+            if log.previous_hash != prev_hash:
+                return False, log.id
+            details_str = json.dumps(log.details, sort_keys=True) if log.details else ""
+            raw_data = f"{log.previous_hash}:{log.user_id}:{log.action}:{log.resource}:{details_str}"
+            expected_hash = hashlib.sha256(raw_data.encode('utf-8')).hexdigest()
+            if log.event_hash != expected_hash:
+                return False, log.id
+            prev_hash = log.event_hash
+
+        return True, None
+
     def __str__(self):
         return f"[{self.timestamp}] {self.user} — {self.get_action_display()} → {self.resource}"
+
+
+class UserProfile(models.Model):
+    """
+    Extensión del usuario para identidad federada OIDC y atributos de seguridad.
+    El campo google_sub es el identificador unívoco e inmutable provisto por Google.
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    google_sub = models.CharField(max_length=255, unique=True, null=True, blank=True, db_index=True)
+    auth_provider = models.CharField(max_length=20, default='local')  # 'local', 'google'
+    email_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Perfil de usuario"
+        verbose_name_plural = "Perfiles de usuario"
+
+    def __str__(self):
+        return f"Profile({self.user.username}, provider={self.auth_provider}, sub={self.google_sub})"

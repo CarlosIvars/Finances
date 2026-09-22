@@ -24,15 +24,22 @@ from api.views import RegisterView
 def health_check(request):
     return JsonResponse({'status': 'ok', 'app': 'FinancIAs', 'message': 'Server is running'})
 
+from django.conf import settings
+from django.conf.urls.static import static
+
 urlpatterns = [
     path('', health_check, name='health_check'),
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
+    path('api/documents/', include('documents.urls')),
     path('api/banking/', include('banking.urls')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/register/', RegisterView.as_view(), name='register'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # SPA catch-all: serve index.html for any non-API route (production only)
 FRONTEND_INDEX = Path('/app/frontend-dist/index.html')
@@ -43,3 +50,4 @@ if FRONTEND_INDEX.exists():
             content_type='text/html'
         )
     urlpatterns += [re_path(r'^(?!api/|admin/).*$', spa_view)]
+

@@ -94,3 +94,36 @@ class AuditMiddleware:
         if x_forwarded_for:
             return x_forwarded_for.split(',')[0].strip()
         return request.META.get('REMOTE_ADDR')
+
+
+class SecurityHeadersMiddleware:
+    """
+    Middleware que añade cabeceras HTTP de seguridad robustas (CSP, Permissions-Policy, Referrer-Policy).
+    Cumple con las Secciones 41, 42 y 94 de SECURITY_PLAN.md.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+
+        # Content-Security-Policy (CSP)
+        csp = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "img-src 'self' data: https: blob:; "
+            "font-src 'self' data: https://fonts.gstatic.com; "
+            "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "frame-ancestors 'none'; "
+            "form-action 'self';"
+        )
+        response.headers.setdefault('Content-Security-Policy', csp)
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('X-Frame-Options', 'DENY')
+        response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        response.headers.setdefault('Permissions-Policy', 'geolocation=(), camera=(), microphone=()')
+
+        return response

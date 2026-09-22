@@ -105,7 +105,76 @@ class TransactionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        return Transaction.objects.filter(user=self.request.user, is_deleted=False).select_related('category', 'account')
+        queryset = Transaction.objects.filter(
+            user=self.request.user, is_deleted=False
+        ).select_related('category', 'account').prefetch_related('documents')
+        
+        # Search filter
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(description__icontains=search) |
+                Q(raw_data__icontains=search) |
+                Q(category__name__icontains=search)
+            )
+
+        # Tax year filter
+        tax_year = self.request.query_params.get('tax_year')
+        if tax_year:
+            try:
+                yr = int(tax_year)
+                queryset = queryset.filter(Q(tax_year=yr) | (Q(tax_year__isnull=True) & Q(date__year=yr)))
+            except ValueError:
+                pass
+
+        # Deductible filter
+        is_deductible = self.request.query_params.get('is_tax_deductible')
+        if is_deductible is not None:
+            if is_deductible.lower() in ('true', '1'):
+                queryset = queryset.filter(Q(is_tax_deductible=True) | Q(category__tax_deductible=True))
+            elif is_deductible.lower() in ('false', '0'):
+                queryset = queryset.filter(is_tax_deductible=False, category__tax_deductible=False)
+
+        # Has attached document filter
+        has_document = self.request.query_params.get('has_document')
+        if has_document is not None:
+            if has_document.lower() in ('true', '1'):
+                queryset = queryset.filter(documents__isnull=False).distinct()
+            elif has_document.lower() in ('false', '0'):
+                queryset = queryset.filter(documents__isnull=True)
+
+        # Category filter (single or comma-separated)
+        category_in = self.request.query_params.get('category_in')
+        if category_in:
+            cat_ids = [int(cid.strip()) for cid in category_in.split(',') if cid.strip().isdigit()]
+            if cat_ids:
+                queryset = queryset.filter(category_id__in=cat_ids)
+
+        # Date range
+        date_after = self.request.query_params.get('date_after')
+        if date_after:
+            queryset = queryset.filter(date__gte=date_after)
+
+        date_before = self.request.query_params.get('date_before')
+        if date_before:
+            queryset = queryset.filter(date__lte=date_before)
+
+        # Amount range
+        min_amount = self.request.query_params.get('min_amount')
+        if min_amount:
+            try:
+                queryset = queryset.filter(amount__gte=float(min_amount))
+            except ValueError:
+                pass
+
+        max_amount = self.request.query_params.get('max_amount')
+        if max_amount:
+            try:
+                queryset = queryset.filter(amount__lte=float(max_amount))
+            except ValueError:
+                pass
+
+        return queryset
     
     def create(self, request, *args, **kwargs):
         logger.info(
@@ -139,6 +208,90 @@ class TransactionViewSet(viewsets.ModelViewSet):
             learn_from_categorization(kwargs.get('pk'))
         
         return response
+
+
+class TaxViewSet(viewsets.ViewSet):
+    """Endpoints para Declaración de la Renta (IRPF), Presets AEAT, Resúmenes y Exportación."""
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get', 'post'])
+    def presets(self, request):
+        from .tax_service import ensure_system_presets
+        from .models import TaxFilterPreset
+        from .serializers import TaxFilterPresetSerializer
+        
+        ensure_system_presets(request.user)
+
+        if request.method == 'GET':
+            presets = TaxFilterPreset.objects.filter(
+                Q(user=request.user) | Q(is_system_preset=True)
+            ).order_by('-is_system_preset', 'name')
+            return Response(TaxFilterPresetSerializer(presets, many=True).data)
+
+        elif request.method == 'POST':
+            name = request.data.get('name')
+            if not name:
+                return Response({'error': 'name es obligatorio.'}, status=status.HTTP_400_BAD_REQUEST)
+            preset = TaxFilterPreset.objects.create(
+                user=request.user,
+                name=name,
+                aeat_box=request.data.get('aeat_box', ''),
+                filters=request.data.get('filters', {}),
+                is_system_preset=False
+            )
+            return Response(TaxFilterPresetSerializer(preset).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['delete'])
+    def delete_preset(self, request, pk=None):
+        from .models import TaxFilterPreset
+        try:
+            preset = TaxFilterPreset.objects.get(id=pk, user=request.user, is_system_preset=False)
+            preset.delete()
+            return Response({'status': 'deleted'})
+        except TaxFilterPreset.DoesNotExist:
+            return Response({'error': 'Preset no encontrado o es del sistema.'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['get'])
+    def summary(self, request):
+        from .tax_service import get_tax_summary
+        year_str = request.query_params.get('year')
+        try:
+            year = int(year_str) if year_str else (date.today().year - 1 if date.today().month < 7 else date.today().year)
+        except ValueError:
+            year = date.today().year
+
+        summary_data = get_tax_summary(request.user, year)
+        return Response(summary_data)
+
+    @action(detail=False, methods=['get'])
+    def export(self, request):
+        from .tax_service import export_tax_excel, export_tax_csv
+        from django.http import HttpResponse
+
+        year_str = request.query_params.get('year')
+        try:
+            year = int(year_str) if year_str else (date.today().year - 1 if date.today().month < 7 else date.today().year)
+        except ValueError:
+            year = date.today().year
+
+        export_format = request.query_params.get('format', 'xlsx').lower()
+
+        if export_format == 'csv':
+            csv_buffer = export_tax_csv(request.user, year)
+            response = HttpResponse(csv_buffer.getvalue(), content_type='text/csv; charset=utf-8')
+            response['Content-Disposition'] = f'attachment; filename="IRPF_Declaracion_Renta_{year}.csv"'
+            return response
+        else:
+            try:
+                excel_buffer = export_tax_excel(request.user, year)
+                response = HttpResponse(
+                    excel_buffer.getvalue(),
+                    content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                )
+                response['Content-Disposition'] = f'attachment; filename="IRPF_Declaracion_Renta_{year}.xlsx"'
+                return response
+            except Exception as e:
+                return Response({'error': f'Error al generar Excel: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ImportBatchViewSet(viewsets.ModelViewSet):

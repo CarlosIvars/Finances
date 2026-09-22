@@ -1,5 +1,8 @@
 
-import { LayoutDashboard, Receipt, PieChart, Import, Settings, LogOut, Sparkles, Wallet, Shield, Landmark, FolderTree } from 'lucide-react';
+import {
+    LayoutDashboard, Receipt, PieChart, Import, Settings, LogOut,
+    Sparkles, Wallet, Shield, Landmark, FolderTree, Calculator, FileText
+} from 'lucide-react';
 
 interface SidebarProps {
     activeTab: string;
@@ -12,6 +15,8 @@ export function Sidebar({ activeTab, onTabChange, onLogout }: SidebarProps) {
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
         { id: 'banking', label: 'Bancos (Open Banking)', icon: <Landmark size={20} /> },
         { id: 'transactions', label: 'Transacciones', icon: <Receipt size={20} /> },
+        { id: 'documents', label: 'Facturas y Documentos', icon: <FileText size={20} /> },
+        { id: 'tax', label: 'Declaración Renta (IRPF)', icon: <Calculator size={20} /> },
         { id: 'categories', label: 'Categorías (Árbol)', icon: <FolderTree size={20} /> },
         { id: 'analytics', label: 'Análisis', icon: <PieChart size={20} /> },
         { id: 'budget', label: 'Presupuesto', icon: <Wallet size={20} /> },

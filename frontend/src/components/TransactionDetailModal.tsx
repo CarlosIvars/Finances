@@ -1,7 +1,13 @@
-import React, { useState } from 'react';
-import { X, CreditCard, Tag, Calendar, Building2, Smartphone, FileText, Check, ChevronDown, ChevronRight, Layers } from 'lucide-react';
-import type { Category } from '../services/api';
-import { updateTransaction } from '../services/api';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+    X, CreditCard, Tag, Calendar, Building2, Smartphone, FileText,
+    Check, ChevronDown, ChevronRight, Layers, Calculator, Upload,
+    ExternalLink, Eye, Unlink, Loader2, ShieldCheck, CheckCircle2
+} from 'lucide-react';
+import type { Category, DocumentItem } from '../services/api';
+import {
+    updateTransaction, getDocuments, uploadDocument, unlinkDocument
+} from '../services/api';
 import { CategoryBadge } from './CategoryBadge';
 
 interface TransactionDetailModalProps {
@@ -18,8 +24,35 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
     onUpdated
 }) => {
     const [selectedCategory, setSelectedCategory] = useState<number | ''>(transaction.category || '');
+    const [isTaxDeductible, setIsTaxDeductible] = useState<boolean>(Boolean(transaction.is_tax_deductible));
+    const [taxYear, setTaxYear] = useState<number | ''>(transaction.tax_year || '');
     const [saving, setSaving] = useState(false);
     const [showRawJson, setShowRawJson] = useState(false);
+
+    // Documentos adjuntos
+    const [attachedDocs, setAttachedDocs] = useState<DocumentItem[]>([]);
+    const [loadingDocs, setLoadingDocs] = useState(true);
+    const [uploadingDoc, setUploadingDoc] = useState(false);
+    const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const loadAttachedDocs = async () => {
+        setLoadingDocs(true);
+        try {
+            const docs = await getDocuments({ transaction_id: transaction.id });
+            setAttachedDocs(docs);
+        } catch (err) {
+            console.error('Error cargando documentos adjuntos:', err);
+        } finally {
+            setLoadingDocs(false);
+        }
+    };
+
+    useEffect(() => {
+        if (transaction?.id) {
+            loadAttachedDocs();
+        }
+    }, [transaction?.id]);
 
     if (!transaction) return null;
 
@@ -34,19 +67,50 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
     const rawText = metadata.raw_text || rawData.raw_text || rawData.text || null;
     const rawTitle = metadata.raw_title || rawData.raw_title || rawData.title || null;
 
-    const handleSaveCategory = async () => {
+    const handleSaveChanges = async () => {
         setSaving(true);
         try {
-            await updateTransaction(transaction.id, { 
-                category: selectedCategory === '' ? null as any : Number(selectedCategory) 
+            await updateTransaction(transaction.id, {
+                category: selectedCategory === '' ? null as any : Number(selectedCategory),
+                is_tax_deductible: isTaxDeductible,
+                tax_year: taxYear === '' ? null : Number(taxYear)
             });
             if (onUpdated) onUpdated();
             onClose();
         } catch (err) {
-            console.error('Error al actualizar la categoría:', err);
-            alert('Error al actualizar la categoría');
+            console.error('Error al actualizar la transacción:', err);
+            alert('Error al guardar los cambios');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadingDoc(true);
+        try {
+            await uploadDocument(file, transaction.id);
+            await loadAttachedDocs();
+            if (onUpdated) onUpdated();
+        } catch (err) {
+            console.error('Error subiendo factura:', err);
+            alert('Error al adjuntar la factura');
+        } finally {
+            setUploadingDoc(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleUnlinkDoc = async (docId: number) => {
+        if (!confirm('¿Deseas desvincular este documento de la transacción?')) return;
+        try {
+            await unlinkDocument(docId);
+            await loadAttachedDocs();
+            if (onUpdated) onUpdated();
+        } catch (err) {
+            console.error('Error desvinculando documento:', err);
         }
     };
 
@@ -148,12 +212,12 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                             </select>
 
                             <button
-                                onClick={handleSaveCategory}
+                                onClick={handleSaveChanges}
                                 disabled={saving}
                                 className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-medium text-sm rounded-xl hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
                             >
                                 <Check size={16} />
-                                {saving ? 'Guardando...' : 'Actualizar Categoría'}
+                                {saving ? 'Guardando...' : 'Guardar Cambios'}
                             </button>
                         </div>
                         {transaction.parent_category_name && (
@@ -162,6 +226,126 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                                 <span>Categoría principal: <strong className="text-foreground">{transaction.parent_category_name}</strong></span>
                             </div>
                         )}
+                    </div>
+
+                    {/* SECCIÓN FACTURA / GESTOR DOCUMENTAL */}
+                    <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+                        <div className="flex items-center justify-between border-b border-border pb-3">
+                            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                <FileText size={16} className="text-primary" />
+                                Justificante / Factura Adjunta
+                            </h3>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileUpload}
+                                accept=".pdf,.png,.jpg,.jpeg"
+                                className="hidden"
+                            />
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={uploadingDoc}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium rounded-xl border border-primary/20 transition-all disabled:opacity-50"
+                            >
+                                {uploadingDoc ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                                <span>Adjuntar Factura</span>
+                            </button>
+                        </div>
+
+                        {loadingDocs ? (
+                            <div className="py-4 text-center text-muted-foreground text-xs flex items-center justify-center gap-2">
+                                <Loader2 size={14} className="animate-spin" />
+                                <span>Buscando facturas adjuntas...</span>
+                            </div>
+                        ) : attachedDocs.length === 0 ? (
+                            <div className="text-center py-4 text-xs text-muted-foreground border border-dashed border-border/80 rounded-xl">
+                                <span>Sin factura adjunta a este movimiento. Puedes adjuntar un PDF o escanear desde Gmail.</span>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {attachedDocs.map((doc) => (
+                                    <div
+                                        key={doc.id}
+                                        className="p-3 bg-secondary/40 border border-border/80 rounded-xl flex items-center justify-between gap-3"
+                                    >
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <FileText size={18} className="text-primary flex-shrink-0" />
+                                            <div className="min-w-0">
+                                                <span className="font-bold text-xs text-foreground line-clamp-1">
+                                                    {doc.file_name}
+                                                </span>
+                                                <span className="text-[11px] text-muted-foreground block">
+                                                    {doc.email_sender ? `De: ${doc.email_sender}` : 'Subida manual'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                                            <button
+                                                onClick={() => setPreviewDoc(doc)}
+                                                className="p-1.5 bg-background hover:bg-secondary text-foreground rounded-lg text-xs font-medium flex items-center gap-1 border border-border"
+                                                title="Ver documento"
+                                            >
+                                                <Eye size={13} />
+                                                <span>Ver</span>
+                                            </button>
+
+                                            {doc.gmail_web_link && (
+                                                <a
+                                                    href={doc.gmail_web_link}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-1.5 bg-background hover:bg-secondary text-foreground rounded-lg text-xs font-medium flex items-center gap-1 border border-border"
+                                                    title="Abrir en Gmail"
+                                                >
+                                                    <ExternalLink size={13} />
+                                                    <span>Gmail</span>
+                                                </a>
+                                            )}
+
+                                            <button
+                                                onClick={() => handleUnlinkDoc(doc.id)}
+                                                className="p-1.5 hover:bg-destructive/15 text-destructive rounded-lg transition-all"
+                                                title="Desvincular factura"
+                                            >
+                                                <Unlink size={13} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* SECCIÓN IRPF / DECLARACIÓN DE LA RENTA */}
+                    <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+                        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 border-b border-border pb-3">
+                            <Calculator size={16} className="text-primary" />
+                            Ajustes Fiscales (IRPF)
+                        </h3>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                            <label className="flex items-center gap-2.5 text-xs font-medium text-foreground cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={isTaxDeductible}
+                                    onChange={(e) => setIsTaxDeductible(e.target.checked)}
+                                    className="w-4 h-4 rounded text-primary focus:ring-primary border-border"
+                                />
+                                <span>Marcar como deducible en IRPF</span>
+                            </label>
+
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">Ejercicio Fiscal:</span>
+                                <input
+                                    type="number"
+                                    placeholder={String(new Date(transaction.date).getFullYear())}
+                                    value={taxYear}
+                                    onChange={(e) => setTaxYear(e.target.value ? Number(e.target.value) : '')}
+                                    className="w-24 bg-background border border-border rounded-xl px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
+                        </div>
                     </div>
 
                     {/* Notification & Bank Metadata Card */}
@@ -251,9 +435,49 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                     >
                         Cerrar
                     </button>
+                    <button
+                        onClick={handleSaveChanges}
+                        disabled={saving}
+                        className="px-5 py-2 text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 rounded-xl transition-colors shadow-sm disabled:opacity-50"
+                    >
+                        {saving ? 'Guardando...' : 'Guardar y Cerrar'}
+                    </button>
                 </div>
             </div>
+
+            {/* Modal Visor Embebido */}
+            {previewDoc && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+                    <div className="glass-card border border-border/80 w-full max-w-3xl h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+                        <div className="p-4 border-b border-border/60 flex items-center justify-between bg-muted/20">
+                            <h3 className="font-bold text-foreground text-sm line-clamp-1">{previewDoc.file_name}</h3>
+                            <div className="flex items-center gap-2">
+                                <a
+                                    href={previewDoc.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg"
+                                >
+                                    <ExternalLink size={16} />
+                                </a>
+                                <button
+                                    onClick={() => setPreviewDoc(null)}
+                                    className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex-1 p-2 bg-muted/10 overflow-hidden flex items-center justify-center">
+                            {previewDoc.mime_type.includes('image') ? (
+                                <img src={previewDoc.url} alt={previewDoc.file_name} className="max-h-full max-w-full object-contain rounded-lg" />
+                            ) : (
+                                <iframe src={previewDoc.url} title={previewDoc.file_name} className="w-full h-full rounded-lg bg-white" />
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
-

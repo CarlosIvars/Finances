@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getTransactions } from './services/api';
+import { getTransactions, authService } from './services/api';
 import { startAutoSync, stopAutoSync } from './services/syncService';
 import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
@@ -13,6 +13,8 @@ import { BudgetPage } from './pages/BudgetPage';
 import { CategoriesPage } from './pages/CategoriesPage';
 import { PrivacyPage } from './pages/PrivacyPage';
 import { BankingPage } from './pages/BankingPage';
+import { TaxPage } from './pages/TaxPage';
+import { DocumentsPage } from './pages/DocumentsPage';
 import { QuickExpenseForm } from './components/QuickExpenseForm';
 import { Loader2 } from 'lucide-react';
 
@@ -28,6 +30,12 @@ function App() {
         }
         return 'banking';
       }
+      if (window.location.search.includes('tab=documents') || window.location.search.includes('gmail_connected')) {
+        return 'documents';
+      }
+      if (window.location.search.includes('tab=tax')) {
+        return 'tax';
+      }
     }
     return 'dashboard';
   });
@@ -35,13 +43,25 @@ function App() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Check if user is already logged in
+  // Check if user is already logged in (BFF session check or legacy token)
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      setIsAuthenticated(true);
-    }
-    setCheckingAuth(false);
+    const checkSession = async () => {
+      try {
+        const authStatus = await authService.getAuthStatus();
+        if (authStatus.authenticated) {
+          setIsAuthenticated(true);
+        } else if (localStorage.getItem('access_token')) {
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
+        }
+      } catch {
+        setIsAuthenticated(false);
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+    checkSession();
   }, []);
 
   // Start auto-sync when authenticated (includes 1h cron)
@@ -54,13 +74,16 @@ function App() {
     }
   }, [isAuthenticated]);
 
-  const handleLogin = (_token: string) => {
+  const handleLogin = (_token?: string) => {
     setIsAuthenticated(true);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } catch (e) {
+      console.error("Error logging out", e);
+    }
     setIsAuthenticated(false);
   };
 
@@ -132,6 +155,10 @@ function App() {
         return <BankingPage />;
       case 'transactions':
         return <TransactionsPage transactions={transactions} onTransactionUpdated={fetchData} />;
+      case 'documents':
+        return <DocumentsPage />;
+      case 'tax':
+        return <TaxPage />;
       case 'categories':
         return <CategoriesPage />;
       case 'analytics':
