@@ -262,19 +262,43 @@ export interface Budget {
     updated_at: string;
 }
 
-export interface BudgetComparison {
+export interface SubcategoryComparison {
     category_id: number;
     category_name: string;
     category_color: string;
+    category_icon?: string;
+    parent_id: number;
+    parent_name?: string;
     budgeted: number;
     spent: number;
     difference: number;
     percentage: number;
+    percentage_of_parent: number;
+}
+
+export interface BudgetComparison {
+    category_id: number;
+    category_name: string;
+    category_color: string;
+    category_icon?: string;
+    parent_id?: number | null;
+    budgeted: number;
+    direct_budgeted?: number;
+    children_budgeted?: number;
+    spent: number;
+    spent_direct?: number;
+    children_spent?: number;
+    difference: number;
+    percentage: number;
+    has_subcategories?: boolean;
+    subcategories?: SubcategoryComparison[];
 }
 
 export interface BudgetComparisonResponse {
     month: string;
     comparison: BudgetComparison[];
+    tree?: BudgetComparison[];
+    flat?: BudgetComparison[];
     total_budgeted: number;
     total_spent: number;
 }

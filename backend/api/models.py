@@ -58,6 +58,7 @@ class Transaction(models.Model):
     
     is_pending = models.BooleanField(default=True, help_text="Requires manual review/categorization")
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.date} - {self.description} : {self.amount} ({self.type})"

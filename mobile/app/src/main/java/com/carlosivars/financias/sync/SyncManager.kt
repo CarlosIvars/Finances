@@ -48,6 +48,7 @@ class SyncManager(private val context: Context) {
     private val db = AppDatabase.getDatabase(context)
     private val transactionDao = db.transactionDao()
     private val categoryDao = db.categoryDao()
+    private val budgetDao = db.budgetDao()
     private val securePrefs = SecurePreferencesManager(context)
 
     suspend fun countPendingSync(): Int = withContext(Dispatchers.IO) {
@@ -163,8 +164,12 @@ class SyncManager(private val context: Context) {
 
         val lastSync = securePrefs.lastSyncTimestamp
         if (lastSync > 0) {
-            val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
-            requestBody.put("since", isoFormat.format(Date(lastSync)))
+            val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+                timeZone = java.util.TimeZone.getTimeZone("UTC")
+            }
+            // Subtract a 60-second safety window to protect against clock drift
+            val safeLastSync = maxOf(0L, lastSync - 60_000L)
+            requestBody.put("since", isoFormat.format(Date(safeLastSync)))
         } else {
             requestBody.put("since", JSONObject.NULL)
         }
@@ -188,6 +193,32 @@ class SyncManager(private val context: Context) {
         }
         // The endpoint returns the complete catalogue, therefore replacement also propagates deletions.
         categoryDao.replaceAll(serverCategories)
+
+        // Sync budgets from server
+        val budgetsArray = responseJson.optJSONArray("budgets") ?: JSONArray()
+        val serverBudgets = buildList {
+            for (i in 0 until budgetsArray.length()) {
+                val item = budgetsArray.getJSONObject(i)
+                val catId = item.optString("category_id")
+                val catName = item.optString("category_name")
+                val amount = item.optDouble("amount", 0.0)
+                val color = item.optString("color", "#10B981")
+                if (catId.isNotEmpty() && catName.isNotEmpty() && amount > 0) {
+                    add(
+                        com.carlosivars.financias.data.BudgetEntity(
+                            categoryId = catId,
+                            categoryName = catName,
+                            monthlyLimit = amount,
+                            colorHex = color
+                        )
+                    )
+                }
+            }
+        }
+        if (serverBudgets.isNotEmpty()) {
+            budgetDao.replaceAll(serverBudgets)
+        }
+
         var pulledCount = 0
 
         for (i in 0 until txArray.length()) {

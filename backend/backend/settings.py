@@ -251,6 +251,13 @@ if not DEBUG:
     # Update ALLOWED_HOSTS for production (override with env var)
     ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
 
+# Open Banking Configuration
+BANKING_PROVIDER = os.environ.get('BANKING_PROVIDER', 'mock')
+BANKING_ENCRYPTION_KEY = os.environ.get(
+    'BANKING_ENCRYPTION_KEY',
+    'm19gWLQ7EBRnXaUTf5heiZTNrVkvf1L6ehTFajLE1tk='
+)
+
 # ==========================================
 # Structured Logging (RGPD: no sensitive data in logs)
 # ==========================================

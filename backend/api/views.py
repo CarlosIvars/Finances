@@ -7,8 +7,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny, BasePermission
 from rest_framework.views import APIView
-from django.db.models import Sum
-from datetime import date, datetime
+from django.db.models import Sum, Q
+from datetime import date, datetime, timedelta
+from collections import defaultdict
 from django.utils import timezone
 from .models import Account, Category, Transaction, ImportBatch, ClassificationRule, Alert, Budget, UserConsent, AuditLog
 from .serializers import (
@@ -267,7 +268,7 @@ class BudgetViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def comparison(self, request):
-        """Comparar presupuesto vs gasto real del mes"""
+        """Comparar presupuesto vs gasto real del mes con desglose jerárquico (árbol) y rollup"""
         month_str = request.query_params.get('month')
         if month_str:
             month = date.fromisoformat(month_str)
@@ -275,44 +276,151 @@ class BudgetViewSet(viewsets.ModelViewSet):
             today = date.today()
             month = today.replace(day=1)
         
-        # Get budgets for the month
-        budgets = Budget.objects.filter(
-            user=request.user,
-            month=month
-        ).select_related('category')
-        
-        # Get actual spending by category for the month
+        # Calculate next month boundary
         next_month = (month.replace(day=28) + timedelta(days=4)).replace(day=1)
         
-        spending = Transaction.objects.filter(
+        # All expense transactions for the month
+        expense_txs = Transaction.objects.filter(
             user=request.user,
             type='expense',
             date__gte=month,
             date__lt=next_month
-        ).values('category', 'category__name', 'category__color').annotate(
-            spent=Sum('amount')
         )
         
-        spending_map = {s['category']: abs(float(s['spent'])) for s in spending}
+        # Total real spent for the month across all transactions (avoids double counting)
+        total_spent_agg = expense_txs.aggregate(total=Sum('amount'))['total']
+        total_spent_global = abs(float(total_spent_agg or 0))
         
-        comparison = []
-        for budget in budgets:
-            spent = spending_map.get(budget.category_id, 0)
-            comparison.append({
-                'category_id': budget.category_id,
-                'category_name': budget.category.name,
-                'category_color': budget.category.color,
-                'budgeted': float(budget.amount),
-                'spent': spent,
-                'difference': float(budget.amount) - spent,
-                'percentage': (spent / float(budget.amount) * 100) if budget.amount else 0
+        # Spending by category
+        spending_records = expense_txs.values('category').annotate(spent=Sum('amount'))
+        direct_spending_map = {s['category']: abs(float(s['spent'])) for s in spending_records if s['category'] is not None}
+        
+        # Budgets for the month
+        budgets = Budget.objects.filter(
+            user=request.user,
+            month=month
+        ).select_related('category')
+        budget_map = {b.category_id: float(b.amount) for b in budgets}
+        
+        # Get all expense categories for user
+        categories = Category.objects.filter(
+            user=request.user,
+            is_income=False
+        ).select_related('parent')
+        
+        children_by_parent = defaultdict(list)
+        root_categories = []
+        
+        for cat in categories:
+            if cat.parent_id:
+                children_by_parent[cat.parent_id].append(cat)
+            else:
+                root_categories.append(cat)
+        
+        tree = []
+        flat_comparison = []
+        
+        for root in root_categories:
+            root_direct_spent = direct_spending_map.get(root.id, 0.0)
+            root_budget = budget_map.get(root.id, 0.0)
+            
+            children_items = []
+            children_spent_sum = 0.0
+            children_budget_sum = 0.0
+            
+            for child in children_by_parent.get(root.id, []):
+                child_spent = direct_spending_map.get(child.id, 0.0)
+                child_budget = budget_map.get(child.id, 0.0)
+                children_spent_sum += child_spent
+                children_budget_sum += child_budget
+                
+                diff = child_budget - child_spent if child_budget > 0 else -child_spent
+                child_pct = (child_spent / child_budget * 100) if child_budget > 0 else 0.0
+                
+                child_item = {
+                    'category_id': child.id,
+                    'category_name': child.name,
+                    'category_color': child.color,
+                    'category_icon': child.icon,
+                    'parent_id': root.id,
+                    'parent_name': root.name,
+                    'budgeted': child_budget,
+                    'spent': child_spent,
+                    'difference': diff,
+                    'percentage': child_pct,
+                    'percentage_of_parent': 0.0
+                }
+                children_items.append(child_item)
+                
+                flat_comparison.append({
+                    'category_id': child.id,
+                    'category_name': child.name,
+                    'category_color': child.color,
+                    'category_icon': child.icon,
+                    'parent_id': root.id,
+                    'parent_name': root.name,
+                    'budgeted': child_budget,
+                    'spent': child_spent,
+                    'difference': diff,
+                    'percentage': child_pct,
+                    'is_child': True
+                })
+            
+            # Rollup: Root total spent is direct spent on parent + sum of all children's spent
+            root_total_spent = root_direct_spent + children_spent_sum
+            effective_budget = root_budget if root_budget > 0 else children_budget_sum
+            
+            for child_item in children_items:
+                if root_total_spent > 0:
+                    child_item['percentage_of_parent'] = round((child_item['spent'] / root_total_spent) * 100, 1)
+                else:
+                    child_item['percentage_of_parent'] = 0.0
+            
+            root_diff = effective_budget - root_total_spent
+            root_pct = (root_total_spent / effective_budget * 100) if effective_budget > 0 else 0.0
+            
+            root_node = {
+                'category_id': root.id,
+                'category_name': root.name,
+                'category_color': root.color,
+                'category_icon': root.icon,
+                'parent_id': None,
+                'budgeted': effective_budget,
+                'direct_budgeted': root_budget,
+                'children_budgeted': children_budget_sum,
+                'spent': root_total_spent,
+                'spent_direct': root_direct_spent,
+                'children_spent': children_spent_sum,
+                'difference': root_diff,
+                'percentage': root_pct,
+                'has_subcategories': len(children_items) > 0,
+                'subcategories': children_items
+            }
+            tree.append(root_node)
+            
+            flat_comparison.append({
+                'category_id': root.id,
+                'category_name': root.name,
+                'category_color': root.color,
+                'category_icon': root.icon,
+                'parent_id': None,
+                'budgeted': effective_budget,
+                'spent': root_total_spent,
+                'difference': root_diff,
+                'percentage': root_pct,
+                'is_child': False
             })
+        
+        # Calculate total budgeted as sum of effective budgets of root categories (avoids double counting)
+        total_budgeted = sum(r['budgeted'] for r in tree)
         
         return Response({
             'month': month.isoformat(),
-            'comparison': comparison,
-            'total_budgeted': sum(c['budgeted'] for c in comparison),
-            'total_spent': sum(c['spent'] for c in comparison)
+            'comparison': tree,
+            'tree': tree,
+            'flat': flat_comparison,
+            'total_budgeted': total_budgeted,
+            'total_spent': total_spent_global
         })
     
     @action(detail=False, methods=['post'])
@@ -364,12 +472,12 @@ class SyncViewSet(viewsets.ViewSet):
         """
         since = request.data.get('since')  # ISO timestamp or None for all
         
-        queryset = Transaction.objects.filter(user=request.user).select_related('category', 'account')
+        queryset = Transaction.objects.filter(user=request.user).select_related('category__parent', 'account')
         
         if since:
             try:
                 since_dt = datetime.fromisoformat(since.replace('Z', '+00:00'))
-                queryset = queryset.filter(created_at__gte=since_dt)
+                queryset = queryset.filter(Q(updated_at__gte=since_dt) | Q(created_at__gte=since_dt))
             except ValueError:
                 return Response({'error': 'Invalid timestamp format'}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -391,9 +499,25 @@ class SyncViewSet(viewsets.ViewSet):
             for c in categories
         ]
         
+        # Budgets for user (most recent per category)
+        budgets = Budget.objects.filter(user=request.user).select_related('category').order_by('-month')
+        seen_cats = set()
+        budgets_data = []
+        for b in budgets:
+            if b.category_id not in seen_cats:
+                seen_cats.add(b.category_id)
+                budgets_data.append({
+                    'category_id': str(b.category_id),
+                    'category_name': b.category.name,
+                    'amount': float(b.amount),
+                    'color': b.category.color,
+                    'month': b.month.isoformat()
+                })
+        
         return Response({
             'transactions': serializer.data,
             'categories': categories_data,
+            'budgets': budgets_data,
             'server_time': timezone.now().isoformat(),
             'has_more': queryset.count() > 500,
         })
@@ -451,6 +575,7 @@ class SyncViewSet(viewsets.ViewSet):
                         existing.is_pending = False
                         update_fields.extend(['category', 'is_pending'])
                     if update_fields:
+                        update_fields.append('updated_at')
                         existing.save(update_fields=update_fields)
                     created.append({
                         'local_id': local_id,
@@ -485,6 +610,32 @@ class SyncViewSet(viewsets.ViewSet):
                     'error': str(e)
                 })
         
+        # Handle optional budgets from mobile
+        budgets_data = request.data.get('budgets', [])
+        if isinstance(budgets_data, list) and budgets_data:
+            today = date.today()
+            current_month = today.replace(day=1)
+            for b in budgets_data:
+                try:
+                    cat_id = b.get('category_id')
+                    amount = float(b.get('amount', 0))
+                    cat = None
+                    if isinstance(cat_id, int) or (isinstance(cat_id, str) and cat_id.isdigit()):
+                        cat = Category.objects.filter(user=request.user, id=int(cat_id)).first()
+                    if not cat:
+                        cat_name = b.get('category_name')
+                        if cat_name:
+                            cat = Category.objects.filter(user=request.user, name__iexact=cat_name).first()
+                    if cat and amount > 0:
+                        Budget.objects.update_or_create(
+                            user=request.user,
+                            category=cat,
+                            month=current_month,
+                            defaults={'amount': amount}
+                        )
+                except Exception:
+                    pass
+
         return Response({
             'created': created,
             'errors': errors,

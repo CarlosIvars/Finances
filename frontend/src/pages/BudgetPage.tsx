@@ -1,14 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Card } from '../components/ui/Card';
-import { Loader2, Sparkles, Save, ChevronDown, Check, AlertTriangle } from 'lucide-react';
+import { Loader2, Sparkles, Save, ChevronDown, ChevronRight, Check, AlertTriangle } from 'lucide-react';
 import { getCategories, getBudgets, saveBudgets, getBudgetComparison, getBudgetAdvice } from '../services/api';
-import type { Category, Budget, BudgetComparison } from '../services/api';
+import type { Category, Budget, BudgetComparison, BudgetComparisonResponse } from '../services/api';
 import { CategoryBadge } from '../components/CategoryBadge';
 
 export function BudgetPage() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [budgets, setBudgets] = useState<{ [categoryId: number]: number }>({});
     const [comparison, setComparison] = useState<BudgetComparison[]>([]);
+    const [compResponse, setCompResponse] = useState<BudgetComparisonResponse | null>(null);
+    const [expandedCategories, setExpandedCategories] = useState<{ [id: number]: boolean }>({});
     const [selectedMonth, setSelectedMonth] = useState(() => {
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
@@ -58,6 +60,7 @@ export function BudgetPage() {
             });
             setBudgets(budgetMap);
 
+            setCompResponse(compData);
             setComparison(compData.comparison);
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -68,6 +71,10 @@ export function BudgetPage() {
     const handleBudgetChange = (categoryId: number, value: string) => {
         const amount = parseFloat(value) || 0;
         setBudgets(prev => ({ ...prev, [categoryId]: amount }));
+    };
+
+    const toggleExpand = (categoryId: number) => {
+        setExpandedCategories(prev => ({ ...prev, [categoryId]: !prev[categoryId] }));
     };
 
     const handleSave = async () => {
@@ -85,6 +92,7 @@ export function BudgetPage() {
             setSaveMessage('✅ Presupuesto guardado correctamente');
             // Refresh comparison data
             const compData = await getBudgetComparison(selectedMonth);
+            setCompResponse(compData);
             setComparison(compData.comparison);
         } catch (error) {
             setSaveMessage('❌ Error al guardar');
@@ -114,8 +122,32 @@ export function BudgetPage() {
         return date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
     };
 
-    const totalBudgeted = Object.values(budgets).reduce((sum, val) => sum + val, 0);
-    const totalSpent = comparison.reduce((sum, c) => sum + c.spent, 0);
+    // Separar categorías raíz y subcategorías
+    const { rootCategories, subcategoriesByParent } = useMemo(() => {
+        const roots: Category[] = [];
+        const subMap: { [parentId: number]: Category[] } = {};
+
+        categories.forEach(cat => {
+            if (cat.parent) {
+                if (!subMap[cat.parent]) subMap[cat.parent] = [];
+                subMap[cat.parent].push(cat);
+            } else {
+                roots.push(cat);
+            }
+        });
+
+        return { rootCategories: roots, subcategoriesByParent: subMap };
+    }, [categories]);
+
+    // Resumen Global: si compResponse está disponible se usan sus totales sin duplicidad
+    const totalBudgeted = compResponse ? compResponse.total_budgeted : rootCategories.reduce((sum, root) => {
+        const subs = subcategoriesByParent[root.id] || [];
+        const rootBudget = budgets[root.id] || 0;
+        const subsBudget = subs.reduce((s, sub) => s + (budgets[sub.id] || 0), 0);
+        return sum + (rootBudget > 0 ? rootBudget : subsBudget);
+    }, 0);
+
+    const totalSpent = compResponse ? compResponse.total_spent : comparison.reduce((sum, c) => sum + c.spent, 0);
 
     if (loading) {
         return (
@@ -131,7 +163,7 @@ export function BudgetPage() {
             <div className="flex justify-between items-center flex-wrap gap-4">
                 <div>
                     <h2 className="text-3xl font-sans font-bold text-foreground mb-1 tracking-tight">💰 Presupuesto Mensual</h2>
-                    <p className="text-muted-foreground font-medium mt-1">Define cuánto planeas gastar en cada categoría</p>
+                    <p className="text-muted-foreground font-medium mt-1">Define cuánto planeas gastar en cada categoría con desglose en árbol</p>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -204,38 +236,58 @@ export function BudgetPage() {
                 </Card>
             </div>
 
-            {/* Budget Form */}
+            {/* Budget Form - Árbol de categorías */}
             <Card>
                 <div className="p-2">
-                    <h3 className="text-lg font-sans tracking-tight font-semibold text-foreground mb-4 px-2">Presupuesto por Categoría</h3>
+                    <h3 className="text-lg font-sans tracking-tight font-semibold text-foreground mb-4 px-2">Presupuesto por Categoría (Árbol y Rollup)</h3>
 
-                    <div className="space-y-3">
-                        {categories.map(cat => {
-                            const comp = getComparisonForCategory(cat.id);
-                            const budget = budgets[cat.id] || 0;
+                    <div className="space-y-4">
+                        {rootCategories.map(root => {
+                            const subs = subcategoriesByParent[root.id] || [];
+                            const hasSubs = subs.length > 0;
+                            const isExpanded = !!expandedCategories[root.id];
+
+                            const comp = getComparisonForCategory(root.id);
+                            const directBudget = budgets[root.id] || 0;
+                            const childrenBudgetSum = subs.reduce((sum, s) => sum + (budgets[s.id] || 0), 0);
+                            const effectiveBudget = directBudget > 0 ? directBudget : childrenBudgetSum;
+
+                            // Gasto consolidado que incluye subcategorías
                             const spent = comp?.spent || 0;
-                            const isOver = budget > 0 && spent > budget;
-                            const percentage = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+                            const isOver = effectiveBudget > 0 && spent > effectiveBudget;
+                            const percentage = effectiveBudget > 0 ? Math.min((spent / effectiveBudget) * 100, 100) : 0;
 
                             return (
                                 <div
-                                    key={cat.id}
-                                    className={`p-4 rounded-2xl border transition-colors ${isOver ? 'border-red-500/30 bg-red-500/5' : 'border-border/80 bg-secondary/30 hover:bg-secondary/50'}`}
+                                    key={root.id}
+                                    className={`rounded-2xl border transition-all ${isOver ? 'border-red-500/30 bg-red-500/5' : 'border-border/80 bg-secondary/20'}`}
                                 >
-                                    <div className="flex items-center gap-4">
+                                    {/* Fila Padre */}
+                                    <div className="p-4 flex items-center gap-4">
                                         {/* Category Icon */}
                                         <CategoryBadge
-                                            categoryName={cat.name}
-                                            categoryColor={cat.color}
-                                            categoryIcon={cat.icon}
+                                            categoryName={root.name}
+                                            categoryColor={root.color}
+                                            categoryIcon={root.icon}
                                             variant="icon-only"
                                             size="md"
                                         />
 
-                                        {/* Category name */}
+                                        {/* Category info */}
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-foreground truncate">{cat.name}</p>
-                                            {budget > 0 && (
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-semibold text-foreground truncate">{root.name}</p>
+                                                {hasSubs && (
+                                                    <button
+                                                        onClick={() => toggleExpand(root.id)}
+                                                        className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium flex items-center gap-1 hover:bg-primary/20 transition-colors"
+                                                    >
+                                                        <span>{subs.length} subcategorías</span>
+                                                        <ChevronRight size={14} className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {effectiveBudget > 0 && (
                                                 <div className="mt-2">
                                                     <div className="h-1.5 bg-border/80 rounded-full overflow-hidden">
                                                         <div
@@ -247,21 +299,23 @@ export function BudgetPage() {
                                             )}
                                         </div>
 
-                                        {/* Budget input */}
+                                        {/* Budget input (Padre) */}
                                         <div className="flex items-center gap-2">
                                             <input
                                                 type="number"
-                                                value={budget || ''}
-                                                onChange={(e) => handleBudgetChange(cat.id, e.target.value)}
-                                                placeholder="0"
-                                                className="w-24 px-3 py-2 bg-background border border-border rounded-xl text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
+                                                value={directBudget || ''}
+                                                onChange={(e) => handleBudgetChange(root.id, e.target.value)}
+                                                placeholder={childrenBudgetSum > 0 ? `${childrenBudgetSum}` : '0'}
+                                                className="w-24 px-3 py-2 bg-background border border-border rounded-xl text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm text-sm"
                                             />
                                             <span className="text-muted-foreground font-medium">€</span>
                                         </div>
 
-                                        {/* Spent */}
+                                        {/* Spent Total */}
                                         <div className="w-28 text-right">
-                                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">Gastado</p>
+                                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">
+                                                {hasSubs ? 'Total Consolidado' : 'Gastado'}
+                                            </p>
                                             <p className={`font-semibold tracking-tight ${isOver ? 'text-expense' : 'text-foreground'}`}>
                                                 {spent.toFixed(2)} €
                                             </p>
@@ -269,7 +323,7 @@ export function BudgetPage() {
 
                                         {/* Status icon */}
                                         <div className="w-8">
-                                            {budget > 0 && (
+                                            {effectiveBudget > 0 && (
                                                 isOver ? (
                                                     <AlertTriangle className="text-red-500" size={20} />
                                                 ) : (
@@ -278,6 +332,79 @@ export function BudgetPage() {
                                             )}
                                         </div>
                                     </div>
+
+                                    {/* Subcategorías Anidadas (Árbol) */}
+                                    {hasSubs && isExpanded && (
+                                        <div className="px-4 pb-4 pt-1 border-t border-border/40 bg-secondary/30 rounded-b-2xl space-y-2">
+                                            <div className="pt-2 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                                Desglose de Subcategorías
+                                            </div>
+
+                                            {subs.map(sub => {
+                                                const subComp = getComparisonForCategory(sub.id) ||
+                                                    comp?.subcategories?.find(s => s.category_id === sub.id);
+                                                const subBudget = budgets[sub.id] || 0;
+                                                const subSpent = subComp?.spent || 0;
+                                                const subPctOfParent = spent > 0 ? (subSpent / spent) * 100 : 0;
+                                                const subIsOver = subBudget > 0 && subSpent > subBudget;
+
+                                                return (
+                                                    <div
+                                                        key={sub.id}
+                                                        className="flex items-center gap-4 py-2 px-3 rounded-xl bg-background/80 border border-border/50 hover:bg-background transition-colors"
+                                                    >
+                                                        <span className="text-muted-foreground font-mono pl-2">└</span>
+
+                                                        <CategoryBadge
+                                                            categoryName={sub.name}
+                                                            categoryColor={sub.color}
+                                                            categoryIcon={sub.icon}
+                                                            variant="icon-only"
+                                                            size="sm"
+                                                        />
+
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="text-sm font-medium text-foreground truncate">{sub.name}</p>
+                                                                <span className="text-xs text-muted-foreground font-normal">
+                                                                    ({subPctOfParent.toFixed(0)}% del total)
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Subcategory budget input */}
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="number"
+                                                                value={subBudget || ''}
+                                                                onChange={(e) => handleBudgetChange(sub.id, e.target.value)}
+                                                                placeholder="0"
+                                                                className="w-20 px-2.5 py-1.5 bg-background border border-border rounded-lg text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm text-xs"
+                                                            />
+                                                            <span className="text-muted-foreground text-xs font-medium">€</span>
+                                                        </div>
+
+                                                        {/* Subcategory spent */}
+                                                        <div className="w-28 text-right">
+                                                            <p className={`text-sm font-medium tracking-tight ${subIsOver ? 'text-expense' : 'text-foreground'}`}>
+                                                                {subSpent.toFixed(2)} €
+                                                            </p>
+                                                        </div>
+
+                                                        <div className="w-8">
+                                                            {subBudget > 0 && (
+                                                                subIsOver ? (
+                                                                    <AlertTriangle className="text-red-500" size={16} />
+                                                                ) : (
+                                                                    <Check className="text-emerald-500" size={16} />
+                                                                )
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}

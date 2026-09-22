@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from banking.models import BankConnection, BankAccount, BankTransaction
 from banking.services.sync_service import SyncService
+from api.models import Account, Transaction, Category
 
 
 class DeduplicationTest(TestCase):
@@ -79,6 +80,50 @@ class DeduplicationTest(TestCase):
 
         ids = list(transactions)
         self.assertEqual(len(ids), len(set(ids)), "IDs must be unique")
+
+    def test_sync_creates_api_transactions_and_links_them(self):
+        """La sincronización debe crear api.models.Transaction vinculadas y asignar categorías."""
+        # Create standard categories
+        Category.objects.create(user=self.user, name='Supermercado')
+        Category.objects.create(user=self.user, name='Restaurantes')
+        Category.objects.create(user=self.user, name='Transporte')
+        Category.objects.create(user=self.user, name='Otros gastos')
+
+        service = SyncService()
+        sync_log = service.sync_connection(self.connection)
+
+        self.assertEqual(sync_log.status, 'success')
+
+        # Check BankAccount is linked to Account
+        self.bank_account.refresh_from_db()
+        self.assertIsNotNone(self.bank_account.account)
+        self.assertEqual(self.bank_account.account.user, self.user)
+
+        # Check BankTransactions are linked to api.models.Transaction
+        bank_txs = BankTransaction.objects.filter(bank_account=self.bank_account)
+        self.assertGreater(bank_txs.count(), 0)
+        for btx in bank_txs:
+            self.assertIsNotNone(btx.transaction)
+            self.assertEqual(btx.transaction.account, self.bank_account.account)
+            self.assertEqual(btx.transaction.user, self.user)
+            self.assertEqual(btx.transaction.amount, btx.amount)
+
+        # Check api.models.Transaction count matches BankTransaction count
+        api_tx_count = Transaction.objects.filter(user=self.user).count()
+        self.assertGreaterEqual(api_tx_count, bank_txs.count())
+
+    def test_second_sync_no_duplicate_api_transactions(self):
+        """Una segunda sincronización no debe duplicar api.models.Transaction."""
+        Category.objects.create(user=self.user, name='Otros gastos')
+
+        service = SyncService()
+        service.sync_connection(self.connection)
+        first_count = Transaction.objects.filter(user=self.user).count()
+
+        service.sync_connection(self.connection)
+        second_count = Transaction.objects.filter(user=self.user).count()
+
+        self.assertEqual(first_count, second_count)
 
 
 class SyncServiceTest(TestCase):

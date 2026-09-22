@@ -16,6 +16,8 @@ from banking.models import (
 )
 from banking.providers import get_provider
 from banking.providers.base import AccountInfo, TransactionInfo
+from api.models import Account, Transaction, Category, ClassificationRule
+from api.services import find_category_by_learning
 
 logger = logging.getLogger('banking')
 
@@ -61,6 +63,9 @@ class SyncService:
                 )
                 total_added += added
                 total_updated += updated
+
+            # 3. Vincular cuentas y copiar transacciones a api.models.Transaction
+            self._link_and_copy_transactions(connection)
 
             sync_log.transactions_added = total_added
             sync_log.transactions_updated = total_updated
@@ -116,6 +121,9 @@ class SyncService:
             if acct_info.owner_name:
                 bank_account.owner_name = acct_info.owner_name
                 bank_account.save(update_fields=['owner_name_encrypted'])
+
+            # Vincular cuenta local en api.models.Account
+            self._ensure_local_account(connection, bank_account)
 
             synced += 1
             action = "created" if created else "updated"
@@ -217,4 +225,230 @@ class SyncService:
 
         # Primera sincronización: últimos 90 días
         return date.today() - timedelta(days=90)
+
+    # Mapeo de comercios y conceptos frecuentes a categorías (objetivo, fallback)
+    MERCHANT_CATEGORY_MAP = {
+        'mercadona': ('supermercado', 'alimentación'),
+        'carrefour': ('supermercado', 'alimentación'),
+        'lidl': ('supermercado', 'alimentación'),
+        'dia': ('supermercado', 'alimentación'),
+        'eroski': ('supermercado', 'alimentación'),
+        'alcampo': ('supermercado', 'alimentación'),
+        'consum': ('supermercado', 'alimentación'),
+        'supercor': ('supermercado', 'alimentación'),
+        'glovo': ('restaurantes', 'alimentación'),
+        'just eat': ('restaurantes', 'alimentación'),
+        'uber eats': ('restaurantes', 'alimentación'),
+        'burger king': ('restaurantes', 'alimentación'),
+        'mcdonald': ('restaurantes', 'alimentación'),
+        'starbucks': ('restaurantes', 'ocio'),
+        'repsol': ('gasolina', 'transporte'),
+        'cepsa': ('gasolina', 'transporte'),
+        'bp': ('gasolina', 'transporte'),
+        'galp': ('gasolina', 'transporte'),
+        'shell': ('gasolina', 'transporte'),
+        'uber': ('transporte', None),
+        'cabify': ('transporte', None),
+        'renfe': ('transporte', None),
+        'metro': ('transporte', None),
+        'zara': ('ropa', None),
+        'decathlon': ('ropa', 'ocio'),
+        'h&m': ('ropa', None),
+        'mango': ('ropa', None),
+        'pull&bear': ('ropa', None),
+        'massimo dutti': ('ropa', None),
+        'bershka': ('ropa', None),
+        'stradivarius': ('ropa', None),
+        'primark': ('ropa', None),
+        'netflix': ('suscripciones', 'ocio'),
+        'spotify': ('suscripciones', 'ocio'),
+        'hbo': ('suscripciones', 'ocio'),
+        'disney': ('suscripciones', 'ocio'),
+        'amazon prime': ('suscripciones', 'ocio'),
+        'amazon': ('otros gastos', 'hogar'),
+        'el corte inglés': ('otros gastos', 'hogar'),
+        'ikea': ('hogar', None),
+        'leroy merlin': ('hogar', None),
+        'iberdrola': ('hogar', None),
+        'endesa': ('hogar', None),
+        'naturgy': ('hogar', None),
+        'vodafone': ('hogar', 'suscripciones'),
+        'movistar': ('hogar', 'suscripciones'),
+        'orange': ('hogar', 'suscripciones'),
+        'empresa sl': ('nómina', 'otros ingresos'),
+        'nomina': ('nómina', 'otros ingresos'),
+    }
+
+    CODE_CATEGORY_MAP = {
+        'GROCERIES': ('supermercado', 'alimentación'),
+        'DINING': ('restaurantes', 'alimentación'),
+        'TRANSPORT': ('transporte', 'gasolina'),
+        'SHOPPING': ('ropa', 'otros gastos'),
+        'UTILITIES': ('hogar', None),
+        'ENTERTAINMENT': ('ocio', 'suscripciones'),
+        'INCOME': ('nómina', 'otros ingresos'),
+    }
+
+    def _ensure_local_account(
+        self,
+        connection: BankConnection,
+        bank_account: BankAccount,
+    ) -> Account:
+        """
+        Asegura que la BankAccount tenga asociada una api.models.Account.
+        """
+        if bank_account.account:
+            return bank_account.account
+
+        inst_name = connection.institution_name or ''
+        acct_name = bank_account.name or 'Cuenta'
+        if inst_name and not acct_name.startswith(inst_name):
+            full_name = f"{inst_name} - {acct_name}"
+        else:
+            full_name = acct_name
+
+        local_account = Account.objects.filter(
+            user=connection.user,
+            name__in=[full_name, acct_name],
+        ).first()
+
+        if not local_account:
+            local_account = Account.objects.create(
+                user=connection.user,
+                name=full_name,
+                bank_name=inst_name,
+                currency=bank_account.currency or 'EUR',
+                initial_balance=Decimal('0.00'),
+            )
+
+        bank_account.account = local_account
+        bank_account.save(update_fields=['account'])
+        return local_account
+
+    def _map_category(
+        self,
+        user: User,
+        category_code: str,
+        merchant: str,
+        description: str,
+        amount: Decimal,
+        rules: list,
+        categories_by_name: dict[str, Category],
+    ) -> Category | None:
+        """Determina la categoría más apropiada para una transacción bancaria."""
+        # 1. Reglas explícitas o aprendizaje previo
+        search_desc = f"{merchant or ''} {description or ''}".strip()
+        learned = find_category_by_learning(user, search_desc, rules)
+        if learned:
+            return learned
+
+        # 2. Mapeo por comercio o palabras clave conocidas
+        search_text = search_desc.lower()
+        for kw, (cat_target, cat_fallback) in self.MERCHANT_CATEGORY_MAP.items():
+            if kw in search_text:
+                if cat_target and cat_target in categories_by_name:
+                    return categories_by_name[cat_target]
+                if cat_fallback and cat_fallback in categories_by_name:
+                    return categories_by_name[cat_fallback]
+
+        # 3. Mapeo por código de categoría del banco/proveedor
+        code = (category_code or '').upper()
+        if code in self.CODE_CATEGORY_MAP:
+            cat_target, cat_fallback = self.CODE_CATEGORY_MAP[code]
+            if cat_target and cat_target in categories_by_name:
+                return categories_by_name[cat_target]
+            if cat_fallback and cat_fallback in categories_by_name:
+                return categories_by_name[cat_fallback]
+
+        # 4. Fallback por tipo de ingreso/gasto
+        if amount >= 0:
+            return categories_by_name.get('nómina') or categories_by_name.get('otros ingresos')
+        else:
+            return categories_by_name.get('otros gastos')
+
+    def _link_and_copy_transactions(self, connection: BankConnection) -> int:
+        """
+        Copia las transacciones bancarias (BankTransaction) no vinculadas
+        hacia api.models.Transaction, asignando categorías y cuenta local.
+        """
+        user = connection.user
+        rules = list(ClassificationRule.objects.filter(user=user))
+        categories = list(Category.objects.filter(user=user).select_related('parent'))
+        categories_by_name = {c.name.lower(): c for c in categories}
+
+        copied_or_linked = 0
+
+        for bank_account in connection.bank_accounts.all():
+            local_account = self._ensure_local_account(connection, bank_account)
+
+            unlinked_txs = BankTransaction.objects.filter(
+                bank_account=bank_account,
+                transaction__isnull=True,
+            )
+
+            for bt in unlinked_txs:
+                # 1. Comprobar si ya existe una transacción idéntica en la cuenta local
+                existing_tx = Transaction.objects.filter(
+                    user=user,
+                    account=local_account,
+                    metadata__external_id=bt.external_transaction_id,
+                ).first()
+
+                if not existing_tx:
+                    existing_tx = Transaction.objects.filter(
+                        user=user,
+                        account=local_account,
+                        date=bt.booking_date,
+                        amount=bt.amount,
+                        description=bt.description,
+                    ).first()
+
+                if existing_tx:
+                    bt.transaction = existing_tx
+                    bt.save(update_fields=['transaction'])
+                    copied_or_linked += 1
+                    continue
+
+                # 2. Asignar categoría
+                category = self._map_category(
+                    user=user,
+                    category_code=bt.category_code,
+                    merchant=bt.merchant_name,
+                    description=bt.description,
+                    amount=bt.amount,
+                    rules=rules,
+                    categories_by_name=categories_by_name,
+                )
+
+                # 3. Crear Transaction en api.models
+                tx_type = 'income' if bt.amount >= 0 else 'expense'
+                new_tx = Transaction.objects.create(
+                    user=user,
+                    account=local_account,
+                    category=category,
+                    date=bt.booking_date,
+                    description=bt.description,
+                    amount=bt.amount,
+                    type=tx_type,
+                    raw_data=bt.description,
+                    metadata={
+                        'source': 'Open Banking',
+                        'institution': connection.institution_name,
+                        'merchant': bt.merchant_name or '',
+                        'category_code': bt.category_code or '',
+                        'external_id': bt.external_transaction_id,
+                        'bank_transaction_id': bt.id,
+                    },
+                    is_pending=category is None,
+                )
+
+                bt.transaction = new_tx
+                bt.save(update_fields=['transaction'])
+                copied_or_linked += 1
+
+        logger.info(
+            "Linked and copied %d transactions for connection %s",
+            copied_or_linked, connection.id,
+        )
+        return copied_or_linked
 
